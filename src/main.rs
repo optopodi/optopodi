@@ -55,7 +55,7 @@ async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> u
 
         return if all_valid { Some(()) } else { None };
     };
-    count_valid_prs(init_page);
+    // count_valid_prs(init_page);
 
     while let Some(page) = octo.get_page::<PullRequest>(&next_page).await? {
         let copy_next = page.next.to_owned();
