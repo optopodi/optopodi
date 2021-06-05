@@ -249,6 +249,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e4075386626662786ddb0ec9081e7c7eeb1ba31951f447ca780ef9f5d568189"
 
 [[package]]
+name = "github-metrics"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "fehler",
+ "octocrab",
+ "tokio",
+]
+
+[[package]]
 name = "h2"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -813,16 +823,6 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "winreg",
-]
-
-[[package]]
-name = "rust-metrics"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "fehler",
- "octocrab",
- "tokio",
 ]
 
 [[package]]
