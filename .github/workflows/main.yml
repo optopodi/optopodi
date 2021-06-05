@@ -1,0 +1,8 @@
+- name: Deploy MDBook
+  # You may pin to the exact commit or the version.
+  # uses: XAMPPRocky/deploy-mdbook@9f5e3bb29ee66ab9c4120af87490a0466fdd2f61
+  uses: XAMPPRocky/deploy-mdbook@v1.1.0
+  with:
+    repository: nikomatsakis/github-metrics
+    workspace: book
+    token: ${{ secrets.GITHUB_TOKEN }}
