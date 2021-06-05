@@ -253,6 +253,7 @@ name = "github-metrics"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "fehler",
  "octocrab",
  "tokio",
