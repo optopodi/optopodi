@@ -12,4 +12,10 @@ Ultimately, I'd like to use this data to help projects and contributors be more 
 
 ## Want to help?
 
-Great! This is a fun project to hack on because it's relatively simple. It's a good way to get acquainted with async Rust and Rust in general. I'm eager to grow a set of maintainers who can help the project grow and be useful, so if you think it sounds appealing, get in touch with nikomatsakis on the rust-lang Zulip or Discord.
+Great! This is a fun project to hack on because it's relatively simple. It's a good way to get acquainted with async Rust and Rust in general. I'm eager to grow a set of maintainers who can help the project grow and be useful, so if you think it sounds appealing, get in touch with nikomatsakis on the [github-metrics zulip] instance below.
+
+## Chat
+
+We chat on the [github-metrics zulip].
+
+[github-metrics zulip]: https://github-metrics.zulipchat.com/
