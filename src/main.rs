@@ -49,9 +49,7 @@ async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models
 /// const num_pull_requests = github-metrics::count_pull_requests(octocrab_instance, String::from("rust"));
 ///
 /// println!("'rust-lang/rust' has had {} Pull Requests in the last 30 days!", num_pull_requests);
-///
 /// ```
-///
 #[throws]
 async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> usize {
     let init_page = octo
