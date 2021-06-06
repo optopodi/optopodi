@@ -17,7 +17,7 @@ async fn main() {
     let rust_lang_org = octocrab.orgs("rust-lang");
     let repos: Vec<Repository> = all_repos(&&rust_lang_org).await?;
 
-    println!("#PR,\t\tREPO");
+    println!("#PR,\tREPO\n--------------------");
     for repo in &repos {
         let count_prs = count_pull_requests(&octocrab, &repo.name).await?;
         println!("{},\t{}", count_prs, repo.name);
@@ -50,12 +50,12 @@ async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> u
                 pr_count += 1;
             } else {
                 all_valid = false;
+				break;
             }
         }
 
         return if all_valid { Some(()) } else { None };
     };
-    // count_valid_prs(init_page);
 
     while let Some(page) = octo.get_page::<PullRequest>(&next_page).await? {
         let copy_next = page.next.to_owned();
