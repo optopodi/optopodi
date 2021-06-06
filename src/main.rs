@@ -81,8 +81,8 @@ async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> u
     };
 
     // run initial page of data through the counter; this might be the only page we have!
-    // note: this is set up this way b/c the `octo.get_page` different is called for all
-    // subsequent pages (rather than `octo.pulls()` which allows us all sorts of good specifications)
+    // NOTE: this is set up this way b/c the `octo.get_page` function is called for all subsequent pages
+    // (rather than `octo.pulls()` which allows us all sorts of good specifications from the starting page)
     count_valid_prs(init_page);
 
     while let Some(page) = octo.get_page::<PullRequest>(&next_page).await? {
