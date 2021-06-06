@@ -1,7 +1,7 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
 use fehler::throws;
-use octocrab::models::{Repository};
+use octocrab::models::Repository;
 mod token;
 mod util;
 
@@ -61,13 +61,17 @@ async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> u
     let thirty_days_ago = Utc::now() - Duration::days(30);
     let mut pr_count: usize = 0;
 
-    'outer: loop {
-        for pr in &page.items {
-            if pr.created_at < thirty_days_ago {
-                pr_count += 1;
-            } else {
-                break 'outer;
-            }
+    loop {
+        let in_last_thirty_days = page
+            .items
+            .iter()
+            .take_while(|pr| pr.created_at < thirty_days_ago)
+            .count();
+
+        pr_count += in_last_thirty_days;
+        if in_last_thirty_days < page.items.len() {
+            // No need to visit the next page.
+            break;
         }
 
         if let Some(p) = octo.get_page(&page.next).await? {
