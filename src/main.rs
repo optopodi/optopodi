@@ -50,7 +50,7 @@ async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> u
                 pr_count += 1;
             } else {
                 all_valid = false;
-				break;
+                break;
             }
         }
 
