@@ -16,7 +16,7 @@ async fn main() {
     let rust_lang_org = octocrab.orgs("rust-lang");
     let repos: Vec<Repository> = all_repos(&&rust_lang_org).await?;
 
-    println!("#PR,\tREPO\n--------------------");
+    println!("# PRs,\tREPO\n--------------------");
     for repo in &repos {
         let count_prs = count_pull_requests(&octocrab, &repo.name).await?;
         println!("{},\t{}", count_prs, repo.name);
@@ -28,14 +28,14 @@ async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models
     util::accumulate_pages(|page| org.list_repos().page(page).send()).await?
 }
 
-/// count the number of pull requests created in the last 30 days for the given repository within the [`rust-lang` github organization](https://github.com/rust-lang)
+/// count the number of pull requests created in the last 30 days for the given rust-lang repository within the [`rust-lang` GitHub Organization]
 ///
-/// ## Arguments
+/// # Arguments
 ///
-/// - `octo` — the instance of `octocrab::Octocrab` that should be used to make any GitHub queries
-/// - `repo_name` — The name of the repository (within GitHub Organization "rust-lang") to count pull-requests for
+/// - `octo` The instance of `octocrab::Octocrab` that should be used to make queries to GitHub API
+/// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the [`rust-lang` Github Organization]
 ///
-/// ## Example
+/// # Example
 ///
 /// ```
 /// use github-metrics;
@@ -46,8 +46,10 @@ async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models
 ///
 /// const num_pull_requests = github-metrics::count_pull_requests(octocrab_instance, String::from("rust"));
 ///
-/// println!("'rust-lang/rust' has had {} Pull Requests in the last 30 days!", num_pull_requests);
+/// println!("The 'rust-lang/rust' repo has had {} Pull Requests created in the last 30 days!", num_pull_requests);
 /// ```
+///
+/// [`rust-lang` GitHub Organization]: https://github.com/rust-lang
 #[throws]
 async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> usize {
     let mut page = octo
@@ -81,5 +83,5 @@ async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> u
         }
     }
 
-    return pr_count;
+    pr_count
 }
