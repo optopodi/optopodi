@@ -1,9 +1,7 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
 use fehler::throws;
-use octocrab::models::{pulls::PullRequest, Repository};
-use std::option::Option;
-use url::Url;
+use octocrab::models::{Repository};
 mod token;
 mod util;
 
@@ -52,42 +50,32 @@ async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models
 /// ```
 #[throws]
 async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> usize {
-    let init_page = octo
+    let mut page = octo
         .pulls("rust-lang", repo_name)
         .list()
         .sort(octocrab::params::pulls::Sort::Created)
-        .per_page(100)
+        .per_page(255)
         .send()
         .await?;
 
     let thirty_days_ago = Utc::now() - Duration::days(30);
     let mut pr_count: usize = 0;
-    let mut next_page = init_page.next.to_owned();
 
-    // given a page of PRs, count any valid PRs and stop iteration as soon as we surpass our date range of 30 days
-    let mut count_valid_prs = |page: octocrab::Page<PullRequest>| -> Option<Url> {
-        let copy_next = page.next.to_owned();
-        let mut all_valid = true;
-        for pr in page {
+    'outer: loop {
+        for pr in &page.items {
             if pr.created_at < thirty_days_ago {
                 pr_count += 1;
             } else {
-                all_valid = false;
-                break;
+                break 'outer;
             }
         }
 
-        return if all_valid { copy_next } else { None };
-    };
-
-    // run initial page of data through the counter; this might be the only page we have!
-    // NOTE: this is set up this way b/c the `octo.get_page` function is called for all subsequent pages
-    // (rather than `octo.pulls()` which allows us all sorts of good specifications from the starting page)
-    count_valid_prs(init_page);
-
-    while let Some(page) = octo.get_page::<PullRequest>(&next_page).await? {
-        next_page = count_valid_prs(page);
+        if let Some(p) = octo.get_page(&page.next).await? {
+            page = p;
+        } else {
+            break;
+        }
     }
 
-    pr_count
+    return pr_count;
 }
