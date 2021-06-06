@@ -257,6 +257,7 @@ dependencies = [
  "fehler",
  "octocrab",
  "tokio",
+ "url",
 ]
 
 [[package]]
