@@ -1,12 +1,20 @@
-name: Deploy mdBook
+name: Build and Deploy
 on: [push]
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-and-deploy:
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: XAMPPRocky/deploy-mdbook@v1.1
+      - name: Checkout 🛎️
+        uses: actions/checkout@v2.3.1
+
+      - name: Install and Build 🔧 # This example project is built using npm and outputs the result to the 'build' folder. Replace with the commands required to build your project, or remove this step entirely if your site is pre-built.
+        run: |
+          brew install mdbook
+          cd book && mdbook build
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@4.1.4
         with:
-            repository: nikomatsakis/github-metrics
-            workspace: book
-            token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gh-pages # The branch the action should deploy to.
+          folder: book/book # The folder the action should deploy.
+          
