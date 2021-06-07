@@ -9,33 +9,39 @@ mod util;
 #[derive(Clap, Debug)]
 #[clap(setting = AppSettings::ColoredHelp)]
 #[clap(name = "gh-metrics")]
-struct Opt {
-    /// name of GitHub organization to analyze
-    #[clap(short, long)]
-    org: String,
+enum Opt {
+    /// list all repositories in the given organization and the number of
+    /// Pull Requests created in the last 30 days
+    List {
+        /// name of GitHub organization to analyze
+        #[clap(short, long)]
+        org: String,
 
-    /// Verbose mode (-v, -vv, -vvv, etc.)
-    #[clap(short, long, parse(from_occurrences))]
-    verbose: u8,
+        /// Verbose mode (-v, -vv, -vvv, etc.)
+        #[clap(short, long, parse(from_occurrences))]
+        verbose: u8,
+    },
 }
 
 #[throws]
 #[tokio::main]
 async fn main() {
-    let opt = Opt::parse();
+    match Opt::parse() {
+        Opt::List { org, verbose: _ } => {
+            let token = token::github_token()?;
+            let octocrab = octocrab::Octocrab::builder()
+                .personal_token(token)
+                .build()?;
 
-    let token = token::github_token()?;
-    let octocrab = octocrab::Octocrab::builder()
-        .personal_token(token)
-        .build()?;
+            let rust_lang_org = octocrab.orgs(&org);
+            let repos: Vec<Repository> = all_repos(&&rust_lang_org).await?;
 
-    let rust_lang_org = octocrab.orgs(&opt.org);
-    let repos: Vec<Repository> = all_repos(&&rust_lang_org).await?;
-
-    println!("# PRs,\tREPO\n--------------------");
-    for repo in &repos {
-        let count_prs = count_pull_requests(&octocrab, &opt.org, &repo.name).await?;
-        println!("{},\t{}", count_prs, repo.name);
+            println!("# PRs,\tREPO\n--------------------");
+            for repo in &repos {
+                let count_prs = count_pull_requests(&octocrab, &org, &repo.name).await?;
+                println!("{},\t{}", count_prs, repo.name);
+            }
+        }
     }
 }
 
