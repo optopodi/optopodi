@@ -8,7 +8,7 @@ where
     F: Future<Output = Result<Page<T>, octocrab::Error>>,
 {
     let mut repos = vec![];
-    for page in 0_u32.. {
+    for page in 1_u32.. {
         let page = data(page).await?;
         let items_len = page.items.len();
         repos.extend(page.items);
