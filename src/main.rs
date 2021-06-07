@@ -26,15 +26,15 @@ enum Opt {
 #[throws]
 #[tokio::main]
 async fn main() {
+    let token = token::github_token()?;
+    let octocrab = octocrab::Octocrab::builder()
+        .personal_token(token)
+        .build()?;
+
     match Opt::parse() {
         Opt::List { org, verbose: _ } => {
-            let token = token::github_token()?;
-            let octocrab = octocrab::Octocrab::builder()
-                .personal_token(token)
-                .build()?;
-
-            let rust_lang_org = octocrab.orgs(&org);
-            let repos: Vec<Repository> = all_repos(&&rust_lang_org).await?;
+            let gh_org = octocrab.orgs(&org);
+            let repos: Vec<Repository> = all_repos(&&gh_org).await?;
 
             println!("# PRs,\tREPO\n--------------------");
             for repo in &repos {
@@ -50,7 +50,7 @@ async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models
     util::accumulate_pages(|page| org.list_repos().page(page).send()).await?
 }
 
-/// count the number of pull requests created in the last 30 days for the given repository within the given org
+/// count the number of pull requests created in the last 30 days for the given repository within the given GitHub organization
 ///
 /// # Arguments
 ///
