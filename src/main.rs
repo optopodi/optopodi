@@ -1,24 +1,40 @@
 use anyhow::Error;
 use chrono::{Duration, Utc};
+use clap::{AppSettings, Clap};
 use fehler::throws;
 use octocrab::models::Repository;
 mod token;
 mod util;
 
+#[derive(Clap, Debug)]
+#[clap(setting = AppSettings::ColoredHelp)]
+#[clap(name = "gh-metrics")]
+struct Opt {
+    /// name of GitHub organization to analyze
+    #[clap(short, long)]
+    org: String,
+
+    /// Verbose mode (-v, -vv, -vvv, etc.)
+    #[clap(short, long, parse(from_occurrences))]
+    verbose: u8,
+}
+
 #[throws]
 #[tokio::main]
 async fn main() {
+    let opt = Opt::parse();
+
     let token = token::github_token()?;
     let octocrab = octocrab::Octocrab::builder()
         .personal_token(token)
         .build()?;
 
-    let rust_lang_org = octocrab.orgs("rust-lang");
+    let rust_lang_org = octocrab.orgs(&opt.org);
     let repos: Vec<Repository> = all_repos(&&rust_lang_org).await?;
 
     println!("# PRs,\tREPO\n--------------------");
     for repo in &repos {
-        let count_prs = count_pull_requests(&octocrab, &repo.name).await?;
+        let count_prs = count_pull_requests(&octocrab, &opt.org, &repo.name).await?;
         println!("{},\t{}", count_prs, repo.name);
     }
 }
@@ -28,12 +44,13 @@ async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models
     util::accumulate_pages(|page| org.list_repos().page(page).send()).await?
 }
 
-/// count the number of pull requests created in the last 30 days for the given rust-lang repository within the [`rust-lang` GitHub Organization]
+/// count the number of pull requests created in the last 30 days for the given repository within the given org
 ///
 /// # Arguments
 ///
-/// - `octo` The instance of `octocrab::Octocrab` that should be used to make queries to GitHub API
-/// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the [`rust-lang` Github Organization]
+/// - `octo` — The instance of `octocrab::Octocrab` that should be used to make queries to GitHub API
+/// - `org_name` — The name of the github organization that owns the specified repository
+/// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the `org_name` Github Organization
 ///
 /// # Example
 ///
@@ -44,18 +61,25 @@ async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models
 ///
 /// let octocrab_instance = octocrab::Octocrab::builder().personal_token("SOME_GITHUB_TOKEN").build()?;
 ///
-/// const num_pull_requests = github-metrics::count_pull_requests(octocrab_instance, String::from("rust"));
+/// const num_pull_requests = github-metrics::count_pull_requests(octocrab_instance, String::from("rust-lang"), String::from("rust"));
 ///
 /// println!("The 'rust-lang/rust' repo has had {} Pull Requests created in the last 30 days!", num_pull_requests);
 /// ```
-///
-/// [`rust-lang` GitHub Organization]: https://github.com/rust-lang
 #[throws]
-async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> usize {
+async fn count_pull_requests(
+    octo: &octocrab::Octocrab,
+    org_name: &String,
+    repo_name: &String,
+) -> usize {
     let mut page = octo
-        .pulls("rust-lang", repo_name)
+        .pulls(org_name, repo_name)
         .list()
+        // take all PRs -- open or closed
+        .state(octocrab::params::State::All)
+        // sort by date created
         .sort(octocrab::params::pulls::Sort::Created)
+        // start with most recent
+        .direction(octocrab::params::Direction::Descending)
         .per_page(255)
         .send()
         .await?;
@@ -67,7 +91,8 @@ async fn count_pull_requests(octo: &octocrab::Octocrab, repo_name: &String) -> u
         let in_last_thirty_days = page
             .items
             .iter()
-            .take_while(|pr| pr.created_at < thirty_days_ago)
+            // take while PRs have been created within the past thirty days
+            .take_while(|pr| pr.created_at > thirty_days_ago)
             .count();
 
         pr_count += in_last_thirty_days;
