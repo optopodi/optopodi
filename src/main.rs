@@ -3,6 +3,8 @@ use chrono::{Duration, Utc};
 use clap::{AppSettings, Clap};
 use fehler::throws;
 use octocrab::models::Repository;
+use serde_derive::Deserialize;
+use std::path::Path;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
 mod google_sheets;
@@ -10,6 +12,29 @@ mod token;
 mod util;
 
 use google_sheets::Sheets;
+
+#[derive(Debug, Deserialize)]
+struct Config {
+    github: GithubConfig,
+}
+
+#[derive(Debug, Deserialize)]
+struct GithubConfig {
+    org: String,
+}
+
+impl Config {
+    #[throws(anyhow::Error)]
+    pub fn load(path: &Path) -> Config {
+        let config_text = std::fs::read_to_string(path)?;
+        Self::parse(&config_text)?
+    }
+
+    #[throws(anyhow::Error)]
+    pub fn parse(text: &str) -> Config {
+        toml::from_str(text)?
+    }
+}
 
 #[derive(Clap, Debug)]
 #[clap(setting = AppSettings::ColoredHelp)]
@@ -34,6 +59,13 @@ enum Opt {
 #[throws]
 #[tokio::main]
 async fn main() {
+    let config_path = Path::new("metrics.toml");
+    let _config = if config_path.exists() {
+        let conf = Config::load(config_path)?;
+        Some(conf)
+    } else {
+        None
+    };
     let token = token::github_token()?;
     let octocrab = octocrab::Octocrab::builder()
         .personal_token(token)
