@@ -67,16 +67,12 @@ async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models
 ///
 /// let octocrab_instance = octocrab::Octocrab::builder().personal_token("SOME_GITHUB_TOKEN").build()?;
 ///
-/// const num_pull_requests = github-metrics::count_pull_requests(octocrab_instance, String::from("rust-lang"), String::from("rust"));
+/// const num_pull_requests = github-metrics::count_pull_requests(octocrab_instance, "rust-lang", "rust");
 ///
 /// println!("The 'rust-lang/rust' repo has had {} Pull Requests created in the last 30 days!", num_pull_requests);
 /// ```
 #[throws]
-async fn count_pull_requests(
-    octo: &octocrab::Octocrab,
-    org_name: &String,
-    repo_name: &String,
-) -> usize {
+async fn count_pull_requests(octo: &octocrab::Octocrab, org_name: &str, repo_name: &str) -> usize {
     let mut page = octo
         .pulls(org_name, repo_name)
         .list()
