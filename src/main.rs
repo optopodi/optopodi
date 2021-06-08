@@ -34,7 +34,7 @@ async fn main() {
     match Opt::parse() {
         Opt::List { org, verbose: _ } => {
             let gh_org = octocrab.orgs(&org);
-            let repos: Vec<Repository> = all_repos(&&gh_org).await?;
+            let repos: Vec<Repository> = all_repos(&gh_org).await?;
 
             println!("# PRs,\tREPO\n--------------------");
             for repo in &repos {
