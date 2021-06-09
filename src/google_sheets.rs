@@ -4,7 +4,7 @@ use std::error;
 use std::fmt;
 
 use oauth::{AccessToken, InstalledFlowAuthenticator, InstalledFlowReturnMethod};
-use reqwest::{header, Client, Method, Request, RequestBuilder, StatusCode, Url};
+use reqwest::{header, Client, Method, Request, StatusCode, Url};
 use serde::{Deserialize, Serialize};
 
 /// Endpoint for the Google Sheets API.
@@ -24,12 +24,19 @@ pub struct Sheets {
 }
 
 impl Sheets {
+    pub fn get_link_to_sheet(sheet_id: &str) -> String {
+        format!("https://docs.google.com/spreadsheets/d/{}/", sheet_id)
+    }
     pub async fn initialize(sheet_id: &str) -> Result<Self, APIError> {
-        let token = Sheets::authenticate().await;
+        let token = match Sheets::authenticate().await {
+            Ok(t) => t,
+            Err(e) => return Err(e),
+        };
+
         Sheets::new(token, sheet_id)
     }
 
-    pub async fn authenticate() -> AccessToken {
+    pub async fn authenticate() -> Result<AccessToken, APIError> {
         // Read application secret from a file. Sometimes it's easier to compile it directly into
         // the binary. The `client_secret` file contains JSON like `{"installed":{"client_id": ... }}`
         let secret = oauth::read_application_secret("client_secret.json")
@@ -38,16 +45,21 @@ impl Sheets {
 
         // All authentication tokens are persisted to a file named `tokencache.json`.
         // The authenticator takes care of caching tokens to disk and refreshing tokens once they've expired.
-        let auth =
-            InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::Interactive)
-                .persist_tokens_to_disk("tokencache.json")
-                .build()
-                .await
-                .unwrap();
+        let auth = match InstalledFlowAuthenticator::builder(
+            secret,
+            InstalledFlowReturnMethod::HTTPRedirect,
+        )
+        .persist_tokens_to_disk("tokencache.json")
+        .build()
+        .await
+        {
+            Ok(a) => a,
+            Err(e) => return Err(APIError::from(e)),
+        };
 
         let scope = &["https://www.googleapis.com/auth/spreadsheets"];
         match auth.token(scope).await {
-            Ok(tok) => tok,
+            Ok(tok) => Ok(tok),
             Err(err) => panic!("Could not authenticate properly {:?}", err),
         }
     }
@@ -60,7 +72,7 @@ impl Sheets {
                 sheet_id: String::from(sheet_id),
             }),
             Err(_) => Err(APIError {
-                status_code: StatusCode::from_u16(505).unwrap(),
+                status_code: StatusCode::from_u16(500).unwrap(),
                 body: "Could not instantiate client".to_string(),
             }),
         }
@@ -70,7 +82,7 @@ impl Sheets {
         &self,
         method: Method,
         path: &str,
-        body: Option<T>,
+        body: T,
         query_params: Option<Vec<(&str, &str)>>,
     ) -> Request
     where
@@ -79,24 +91,24 @@ impl Sheets {
         // confirm URL can parse before continuing
         let url = Url::parse(BASE_ENDPOINT).unwrap().join(&path).unwrap();
 
-        // panic if token is expired
-        // TODO: we can change this to read from cached tokens in `token_cache.json`
+        // TODO: use `self.token = Sheets::authenticate().await;` to attempt to update token from cache
+        // NOTE: this would make `request` async and I don't know if we want that or not
         if self.token.is_expired() {
             panic!("token is expired");
         }
 
-        let bearer =
+        let bearer_token =
             header::HeaderValue::from_str(&format!("Bearer {}", &self.token.as_str())).unwrap();
 
         // Set the default headers.
         let mut headers = header::HeaderMap::new();
-        headers.append(header::AUTHORIZATION, bearer);
+        headers.append(header::AUTHORIZATION, bearer_token);
         headers.append(
             header::CONTENT_TYPE,
             header::HeaderValue::from_static("application/json"),
         );
 
-        let mut request_builder: RequestBuilder = self
+        let mut request_builder = self
             .client
             .request(Method::from(&method), url)
             .headers(headers);
@@ -105,10 +117,8 @@ impl Sheets {
             request_builder = request_builder.query(&val);
         }
 
-        if let Some(b) = body {
-            if method != Method::GET && method != Method::DELETE {
-                request_builder = request_builder.json(&b);
-            }
+        if method != Method::GET && method != Method::DELETE {
+            request_builder = request_builder.json(&body);
         }
 
         request_builder.build().unwrap()
@@ -117,8 +127,8 @@ impl Sheets {
     pub async fn clear_sheet(&self) -> Result<UpdateValuesResponse, APIError> {
         let request = self.request(
             Method::POST,
-            &format!("spreadsheets/{}/values/A1:Z1000:clear", self.sheet_id),
-            Some(EmptyBody {}),
+            &format!("spreadsheets/{}/values/Sheet1:clear", self.sheet_id),
+            EmptyBody {},
             None,
         );
 
@@ -145,15 +155,14 @@ impl Sheets {
         range: &str,
         value: Vec<Vec<String>>,
     ) -> Result<UpdateValuesResponse, APIError> {
-        // Build the request.
         let request = self.request(
             Method::PUT,
             &format!("spreadsheets/{}/values/{}", self.sheet_id, range),
-            Some(ValueRange {
+            ValueRange {
                 major_dimension: Some("ROWS".to_string()),
                 range: Some(range.to_string()),
                 values: Some(value),
-            }),
+            },
             Some(vec![
                 ("valueInputOption", "USER_ENTERED"),
                 ("responseValueRenderOption", "FORMATTED_VALUE"),
@@ -161,17 +170,18 @@ impl Sheets {
             ]),
         );
 
-        let resp = self.client.execute(request).await.unwrap();
-        match resp.status() {
-            StatusCode::OK => Ok(resp.json().await.unwrap()),
-            s => Err(APIError {
-                status_code: s,
-                body: resp.text().await.unwrap(),
+        let res = self.client.execute(request).await.unwrap();
+        match res.status() {
+            StatusCode::OK => Ok(res.json().await.unwrap()),
+            status_code => Err(APIError {
+                status_code,
+                body: res.text().await.unwrap(),
             }),
         }
     }
 }
 
+#[derive(Debug)]
 pub struct APIError {
     pub status_code: StatusCode,
     pub body: String,
@@ -179,29 +189,7 @@ pub struct APIError {
 
 impl fmt::Display for APIError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "APIError {{\n\
-                status_code: {},
-                body: {}
-            }}",
-            self.status_code.to_string(),
-            self.body
-        )
-    }
-}
-
-impl fmt::Debug for APIError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "APIError {{\n\
-                status_code: {},
-                body: {}
-            }}",
-            self.status_code.to_string(),
-            self.body
-        )
+        write!(f, "APIError: '{}'\nbody: {}", self.status_code, self.body)
     }
 }
 
@@ -209,6 +197,15 @@ impl error::Error for APIError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         // Generic error, underlying cause isn't tracked.
         None
+    }
+}
+
+impl From<std::io::Error> for APIError {
+    fn from(error: std::io::Error) -> Self {
+        APIError {
+            status_code: StatusCode::NOT_FOUND,
+            body: format!("{}", error),
+        }
     }
 }
 
@@ -235,4 +232,16 @@ pub struct UpdateValuesResponse {
     pub spreadsheet_id: Option<String>,
     #[serde(rename = "updatedCells")]
     pub updated_cells: Option<i32>,
+}
+
+impl fmt::Display for UpdateValuesResponse {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} columns; {} rows; and {} total cells updated",
+            self.updated_columns.unwrap_or(0),
+            self.updated_rows.unwrap_or(0),
+            self.updated_cells.unwrap_or(0)
+        )
+    }
 }

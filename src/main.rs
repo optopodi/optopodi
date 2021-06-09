@@ -5,6 +5,7 @@ use chrono::{Duration, Utc};
 use clap::{AppSettings, Clap};
 use fehler::throws;
 use octocrab::models::Repository;
+use std::io::{self, Write};
 
 mod google_sheets;
 mod token;
@@ -68,7 +69,7 @@ impl fmt::Display for ListEntry {
 
 impl IntoCollection<ListEntry> for ListEntry {
     fn into_entry(data: Vec<ListEntry>) -> Collection<ListEntry> {
-        Collection::new(vec!["# of PRs,\t", "Repository Name,"], data)
+        Collection::new(vec!["# of PRs\t", "Repository Name"], data)
     }
 }
 
@@ -82,17 +83,28 @@ impl<T: std::fmt::Display + google_sheets::IntoSheetEntry> Collection<T> {
         }
     }
 
-    fn print_all(self) {
-        println!("{}", self.headers.join(""));
-        println!("-----------------------------------");
+    fn print_all(self) -> io::Result<()> {
+        let stdout = io::stdout();
+        let mut handle = stdout.lock();
+
+        writeln!(handle, "{}", self.headers.join(""))?;
+        writeln!(handle, "-----------------------------------")?;
+
         for entry in self.data {
-            println!("{}", entry);
+            writeln!(handle, "{}", entry)?;
         }
+
+        Ok(())
     }
 
-    #[throws]
-    async fn into_sheet(self, sheet_id: &str) {
-        let sheets = google_sheets::Sheets::initialize(&sheet_id).await?;
+    async fn into_sheet(
+        self,
+        sheet_id: &str,
+    ) -> Result<google_sheets::UpdateValuesResponse, google_sheets::APIError> {
+        let sheets = match google_sheets::Sheets::initialize(&sheet_id).await {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         let mut sheet_data: Vec<Vec<String>> = vec![self.headers];
 
@@ -100,8 +112,7 @@ impl<T: std::fmt::Display + google_sheets::IntoSheetEntry> Collection<T> {
             sheet_data.push(d.into_sheet_entry());
         }
 
-        let res = sheets.refresh_entire_sheet(sheet_data).await?;
-        println!("{:#?}", res);
+        sheets.refresh_entire_sheet(sheet_data).await
     }
 }
 
@@ -121,22 +132,37 @@ async fn main() {
         } => {
             let gh_org = octocrab.orgs(&org);
             let repos: Vec<Repository> = all_repos(&gh_org).await?;
-
-            let mut entries_vec: Vec<ListEntry> = Vec::new();
+            let mut entries: Collection<ListEntry> = ListEntry::into_entry(vec![]);
 
             for repo in &repos {
                 let count_prs = count_pull_requests(&octocrab, &org, &repo.name).await?;
-                entries_vec.push(ListEntry {
+                entries.data.push(ListEntry {
                     repository_name: repo.name.to_string(),
                     number_recent_pull_requests: count_prs,
                 });
             }
 
-            let entries: Collection<ListEntry> = ListEntry::into_entry(entries_vec);
-
             match gs {
-                Some(sheet_id) => entries.into_sheet(&sheet_id).await?,
-                None => entries.print_all(),
+                // if user specified a google sheet ID, they must want to export data to that sheet!
+                Some(sheet_id) => match entries.into_sheet(&sheet_id).await {
+                    Ok(res) => {
+                        let sheet_url = if let Some(ss_id) = &res.spreadsheet_id {
+                            google_sheets::Sheets::get_link_to_sheet(&ss_id)
+                        } else {
+                            String::from("unknown")
+                        };
+                        println!(
+                            "Data successfully uploaded to your Google Sheet! {} \n\nLink to Sheet: {}",
+                            res, sheet_url
+                        );
+                    }
+                    Err(err) => println!(
+                        "A problem occurred while uploading your data to Google Sheets! {:#?}",
+                        err
+                    ),
+                },
+                // user did not specify Sheet ID, so they must want to print to terminal
+                None => entries.print_all()?,
             }
         }
     }
