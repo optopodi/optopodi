@@ -1,8 +1,12 @@
+use std::fmt;
+
 use anyhow::Error;
 use chrono::{Duration, Utc};
 use clap::{AppSettings, Clap};
 use fehler::throws;
 use octocrab::models::Repository;
+
+mod google_sheets;
 mod token;
 mod util;
 
@@ -20,7 +24,85 @@ enum Opt {
         /// Verbose mode (-v, -vv, -vvv, etc.)
         #[clap(short, long, parse(from_occurrences))]
         verbose: u8,
+
+        #[clap(short, long)]
+        google_sheet: Option<String>,
     },
+}
+
+struct Collection<T: google_sheets::IntoSheetEntry> {
+    headers: Vec<String>,
+    data: Vec<T>,
+    num_columns: usize,
+    num_rows: usize,
+}
+
+trait IntoCollection<T: google_sheets::IntoSheetEntry> {
+    fn into_entry(data: Vec<T>) -> Collection<T>;
+}
+
+#[derive(Debug)]
+struct ListEntry {
+    repository_name: String,
+    number_recent_pull_requests: usize,
+}
+
+impl google_sheets::IntoSheetEntry for ListEntry {
+    fn into_sheet_entry(&self) -> Vec<String> {
+        vec![
+            self.number_recent_pull_requests.to_string(),
+            String::from(&self.repository_name),
+        ]
+    }
+}
+
+impl fmt::Display for ListEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{},\t\t{}",
+            self.number_recent_pull_requests, self.repository_name
+        )
+    }
+}
+
+impl IntoCollection<ListEntry> for ListEntry {
+    fn into_entry(data: Vec<ListEntry>) -> Collection<ListEntry> {
+        Collection::new(vec!["# of PRs,\t", "Repository Name,"], data)
+    }
+}
+
+impl<T: std::fmt::Display + google_sheets::IntoSheetEntry> Collection<T> {
+    fn new(headers: Vec<&str>, data: Vec<T>) -> Self {
+        Collection {
+            num_columns: headers.len(),
+            num_rows: data.len(),
+            headers: headers.into_iter().map(|s| s.to_string()).collect(),
+            data,
+        }
+    }
+
+    fn print_all(self) {
+        println!("{}", self.headers.join(""));
+        println!("-----------------------------------");
+        for entry in self.data {
+            println!("{}", entry);
+        }
+    }
+
+    #[throws]
+    async fn into_sheet(self, sheet_id: &str) {
+        let sheets = google_sheets::Sheets::initialize(&sheet_id).await?;
+
+        let mut sheet_data: Vec<Vec<String>> = vec![self.headers];
+
+        for d in self.data {
+            sheet_data.push(d.into_sheet_entry());
+        }
+
+        let res = sheets.refresh_entire_sheet(sheet_data).await?;
+        println!("{:#?}", res);
+    }
 }
 
 #[throws]
@@ -32,14 +114,29 @@ async fn main() {
         .build()?;
 
     match Opt::parse() {
-        Opt::List { org, verbose: _ } => {
+        Opt::List {
+            org,
+            google_sheet: gs,
+            verbose: _,
+        } => {
             let gh_org = octocrab.orgs(&org);
             let repos: Vec<Repository> = all_repos(&gh_org).await?;
 
-            println!("# PRs,\tREPO\n--------------------");
+            let mut entries_vec: Vec<ListEntry> = Vec::new();
+
             for repo in &repos {
                 let count_prs = count_pull_requests(&octocrab, &org, &repo.name).await?;
-                println!("{},\t{}", count_prs, repo.name);
+                entries_vec.push(ListEntry {
+                    repository_name: repo.name.to_string(),
+                    number_recent_pull_requests: count_prs,
+                });
+            }
+
+            let entries: Collection<ListEntry> = ListEntry::into_entry(entries_vec);
+
+            match gs {
+                Some(sheet_id) => entries.into_sheet(&sheet_id).await?,
+                None => entries.print_all(),
             }
         }
     }
