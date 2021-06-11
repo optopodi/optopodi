@@ -1,17 +1,15 @@
-use std::fmt::{self, Display};
-
 use anyhow::Error;
 use chrono::{Duration, Utc};
 use clap::{AppSettings, Clap};
 use fehler::throws;
 use octocrab::models::Repository;
-use std::io::{self, Write};
+use tokio::sync::mpsc;
 
 mod google_sheets;
 mod token;
 mod util;
 
-use google_sheets::IntoSheetEntry;
+use google_sheets::Sheets;
 
 #[derive(Clap, Debug)]
 #[clap(setting = AppSettings::ColoredHelp)]
@@ -33,90 +31,6 @@ enum Opt {
     },
 }
 
-/// A collection of data
-struct Collection<T> {
-    /// the names of each column of data
-    column_names: Vec<String>,
-    /// each entry of data
-    data: Vec<T>,
-}
-
-trait IntoCollection<T> {
-    fn into_collection(data: Vec<T>) -> Collection<T>;
-}
-
-#[derive(Debug)]
-struct ListEntry {
-    repository_name: String,
-    number_recent_pull_requests: usize,
-}
-
-impl IntoSheetEntry for ListEntry {
-    fn into_sheet_entry(&self) -> Vec<String> {
-        vec![
-            self.number_recent_pull_requests.to_string(),
-            String::from(&self.repository_name),
-        ]
-    }
-}
-
-impl fmt::Display for ListEntry {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{},\t\t{}",
-            self.number_recent_pull_requests, self.repository_name
-        )
-    }
-}
-
-impl IntoCollection<ListEntry> for ListEntry {
-    fn into_collection(data: Vec<ListEntry>) -> Collection<ListEntry> {
-        Collection::new(vec!["# of PRs\t", "Repository Name"], data)
-    }
-}
-
-impl<T: Display + IntoSheetEntry> Collection<T> {
-    fn new(column_names: Vec<&str>, data: Vec<T>) -> Self {
-        Collection {
-            column_names: column_names.iter().map(|s| s.to_string()).collect(),
-            data,
-        }
-    }
-
-    fn print_all(self) -> io::Result<()> {
-        let stdout = io::stdout();
-        let mut handle = stdout.lock();
-
-        writeln!(handle, "{}", self.column_names.join(""))?;
-        writeln!(handle, "-----------------------------------")?;
-
-        for entry in self.data {
-            writeln!(handle, "{}", entry)?;
-        }
-
-        Ok(())
-    }
-
-    async fn into_sheet(
-        self,
-        sheet_id: &str,
-    ) -> Result<google_sheets::UpdateValuesResponse, google_sheets::APIError> {
-        let sheets = match google_sheets::Sheets::initialize(&sheet_id).await {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        let mut sheet_data: Vec<Vec<String>> = vec![self.column_names];
-
-        for d in self.data {
-            sheet_data.push(d.into_sheet_entry());
-        }
-
-        sheets.refresh_entire_sheet(sheet_data).await
-    }
-}
-
 #[throws]
 #[tokio::main]
 async fn main() {
@@ -131,39 +45,88 @@ async fn main() {
             google_sheet: gs,
             verbose: _,
         } => {
-            let gh_org = octocrab.orgs(&org);
-            let repos: Vec<Repository> = all_repos(&gh_org).await?;
-            let mut entries: Collection<ListEntry> = ListEntry::into_collection(vec![]);
+            // utilize `tokio::sync::mpsc` to decouple producing and consuming data
+            // `tx` can be used for sending entries (producing data)
+            // `rx` can be used to DO something with gathered data (consuming data)
+            let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
 
-            for repo in &repos {
-                let count_prs = count_pull_requests(&octocrab, &org, &repo.name).await?;
-                entries.data.push(ListEntry {
-                    repository_name: repo.name.to_string(),
-                    number_recent_pull_requests: count_prs,
-                });
-            }
+            // produce all relevant data within this
+            tokio::spawn(async move {
+                let gh_org = octocrab.orgs(&org);
+
+                let repos: Vec<Repository> = match all_repos(&gh_org).await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        println!("Ran into an error while gathering repositories! {}", e);
+                        return;
+                    }
+                };
+
+                for repo in &repos {
+                    match count_pull_requests(&octocrab, &org, &repo.name).await {
+                        Ok(count_prs) => {
+                            if let Err(_) = tx
+                                // here we send the entry in `[repository_name, count_prs]` format
+                                .send(vec![String::from(&repo.name), count_prs.to_string()])
+                                .await
+                            {
+                                println!("receiver dropped!");
+                                return;
+                            }
+                        }
+
+                        Err(e) => println!(
+                            "Ran into an issue while counting PRs for repository {}: {}",
+                            &repo.name, e
+                        ),
+                    }
+                }
+            });
 
             match gs {
                 // if user specified a google sheet ID, they must want to export data to that sheet!
-                Some(sheet_id) => match entries.into_sheet(&sheet_id).await {
-                    Ok(res) => {
-                        let sheet_url = if let Some(ss_id) = &res.spreadsheet_id {
-                            google_sheets::Sheets::get_link_to_sheet(&ss_id)
-                        } else {
-                            String::from("unknown")
-                        };
-                        println!(
-                            "Data successfully uploaded to your Google Sheet! {} \n\nLink to Sheet: {}",
-                            res, sheet_url
-                        );
+                Some(sheet_id) => {
+                    let sheets = match Sheets::initialize(&sheet_id).await {
+                        Ok(s) => s,
+                        Err(e) => {
+                            println!("There's been an error! {}", e);
+                            return;
+                        }
+                    };
+
+                    if let Err(e) = sheets.clear_sheet().await {
+                        println!("There's been an error clearing the sheet: {}", e);
                     }
-                    Err(err) => println!(
-                        "A problem occurred while uploading your data to Google Sheets! {:#?}",
-                        err
-                    ),
-                },
-                // user did not specify Sheet ID, so they must want to print to terminal
-                None => entries.print_all()?,
+
+                    if let Err(e) = sheets
+                        .append(vec![
+                            String::from("Repository Name"),
+                            String::from("# of PRs"),
+                        ])
+                        .await
+                    {
+                        println!("There's been an error appending the column names {}", e);
+                    }
+
+                    while let Some(data) = rx.recv().await {
+                        let user_err_message = format!("Had trouble appending repo {}", &data[0]);
+                        if let Err(e) = sheets.append(data).await {
+                            println!("{}: {}", user_err_message, e);
+                        }
+                    }
+
+                    println!(
+                        "Finished exporting data to sheet: {}",
+                        sheets.get_link_to_sheet()
+                    )
+                }
+                // User wants to print to terminal, they did not specify a google sheet ID
+                None => {
+                    println!("# of PRs\tRepository Name\n------------------------------");
+                    while let Some(entry) = rx.recv().await {
+                        println!("{}\t{}", &entry[1], &entry[0]);
+                    }
+                }
             }
         }
     }
