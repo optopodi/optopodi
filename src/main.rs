@@ -13,12 +13,12 @@ mod util;
 
 use google_sheets::Sheets;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 struct Config {
     github: GithubConfig,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 struct GithubConfig {
     org: String,
 }
@@ -61,10 +61,9 @@ enum Opt {
 async fn main() {
     let config_path = Path::new("metrics.toml");
     let _config = if config_path.exists() {
-        let conf = Config::load(config_path)?;
-        Some(conf)
+        Config::load(config_path)?
     } else {
-        None
+        Config::default()
     };
     let token = token::github_token()?;
     let octocrab = octocrab::Octocrab::builder()
