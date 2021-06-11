@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Display};
 
 use anyhow::Error;
 use chrono::{Duration, Utc};
@@ -10,6 +10,8 @@ use std::io::{self, Write};
 mod google_sheets;
 mod token;
 mod util;
+
+use google_sheets::IntoSheetEntry;
 
 #[derive(Clap, Debug)]
 #[clap(setting = AppSettings::ColoredHelp)]
@@ -31,15 +33,16 @@ enum Opt {
     },
 }
 
-struct Collection<T: google_sheets::IntoSheetEntry> {
-    headers: Vec<String>,
+/// A collection of data
+struct Collection<T> {
+    /// the names of each column of data
+    column_names: Vec<String>,
+    /// each entry of data
     data: Vec<T>,
-    num_columns: usize,
-    num_rows: usize,
 }
 
-trait IntoCollection<T: google_sheets::IntoSheetEntry> {
-    fn into_entry(data: Vec<T>) -> Collection<T>;
+trait IntoCollection<T> {
+    fn into_collection(data: Vec<T>) -> Collection<T>;
 }
 
 #[derive(Debug)]
@@ -48,7 +51,7 @@ struct ListEntry {
     number_recent_pull_requests: usize,
 }
 
-impl google_sheets::IntoSheetEntry for ListEntry {
+impl IntoSheetEntry for ListEntry {
     fn into_sheet_entry(&self) -> Vec<String> {
         vec![
             self.number_recent_pull_requests.to_string(),
@@ -68,17 +71,15 @@ impl fmt::Display for ListEntry {
 }
 
 impl IntoCollection<ListEntry> for ListEntry {
-    fn into_entry(data: Vec<ListEntry>) -> Collection<ListEntry> {
+    fn into_collection(data: Vec<ListEntry>) -> Collection<ListEntry> {
         Collection::new(vec!["# of PRs\t", "Repository Name"], data)
     }
 }
 
-impl<T: std::fmt::Display + google_sheets::IntoSheetEntry> Collection<T> {
-    fn new(headers: Vec<&str>, data: Vec<T>) -> Self {
+impl<T: Display + IntoSheetEntry> Collection<T> {
+    fn new(column_names: Vec<&str>, data: Vec<T>) -> Self {
         Collection {
-            num_columns: headers.len(),
-            num_rows: data.len(),
-            headers: headers.into_iter().map(|s| s.to_string()).collect(),
+            column_names: column_names.iter().map(|s| s.to_string()).collect(),
             data,
         }
     }
@@ -87,7 +88,7 @@ impl<T: std::fmt::Display + google_sheets::IntoSheetEntry> Collection<T> {
         let stdout = io::stdout();
         let mut handle = stdout.lock();
 
-        writeln!(handle, "{}", self.headers.join(""))?;
+        writeln!(handle, "{}", self.column_names.join(""))?;
         writeln!(handle, "-----------------------------------")?;
 
         for entry in self.data {
@@ -106,7 +107,7 @@ impl<T: std::fmt::Display + google_sheets::IntoSheetEntry> Collection<T> {
             Err(e) => return Err(e),
         };
 
-        let mut sheet_data: Vec<Vec<String>> = vec![self.headers];
+        let mut sheet_data: Vec<Vec<String>> = vec![self.column_names];
 
         for d in self.data {
             sheet_data.push(d.into_sheet_entry());
@@ -132,7 +133,7 @@ async fn main() {
         } => {
             let gh_org = octocrab.orgs(&org);
             let repos: Vec<Repository> = all_repos(&gh_org).await?;
-            let mut entries: Collection<ListEntry> = ListEntry::into_entry(vec![]);
+            let mut entries: Collection<ListEntry> = ListEntry::into_collection(vec![]);
 
             for repo in &repos {
                 let count_prs = count_pull_requests(&octocrab, &org, &repo.name).await?;

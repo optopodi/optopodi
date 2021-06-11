@@ -37,11 +37,10 @@ impl Sheets {
     }
 
     pub async fn authenticate() -> Result<AccessToken, APIError> {
-        // Read application secret from a file. Sometimes it's easier to compile it directly into
-        // the binary. The `client_secret` file contains JSON like `{"installed":{"client_id": ... }}`
+        // Read application secret from a file. Sometimes it's easier to compile it directly into the binary.
         let secret = oauth::read_application_secret("client_secret.json")
             .await
-            .expect("client_secret.json");
+            .expect("Could not read Client Secret from file `client_secret.json`");
 
         // All authentication tokens are persisted to a file named `tokencache.json`.
         // The authenticator takes care of caching tokens to disk and refreshing tokens once they've expired.
@@ -78,7 +77,7 @@ impl Sheets {
         }
     }
 
-    pub fn request<T>(
+    async fn request<T>(
         &self,
         method: Method,
         path: &str,
@@ -91,10 +90,11 @@ impl Sheets {
         // confirm URL can parse before continuing
         let url = Url::parse(BASE_ENDPOINT).unwrap().join(&path).unwrap();
 
-        // TODO: use `self.token = Sheets::authenticate().await;` to attempt to update token from cache
-        // NOTE: this would make `request` async and I don't know if we want that or not
+        // TODO-- use `self.token = Sheets::authenticate().await.unwrap()` to attempt to read token from cache
+        // Note: this would require a mutable reference to `&mut self` in
+        // practically every method for `google_sheets::Sheets`
         if self.token.is_expired() {
-            panic!("token is expired");
+            panic!("Token is expired");
         }
 
         let bearer_token =
@@ -125,12 +125,14 @@ impl Sheets {
     }
 
     pub async fn clear_sheet(&self) -> Result<UpdateValuesResponse, APIError> {
-        let request = self.request(
-            Method::POST,
-            &format!("spreadsheets/{}/values/Sheet1:clear", self.sheet_id),
-            EmptyBody {},
-            None,
-        );
+        let request = self
+            .request(
+                Method::POST,
+                &format!("spreadsheets/{}/values/Sheet1:clear", self.sheet_id),
+                EmptyBody {},
+                None,
+            )
+            .await;
 
         let res = self.client.execute(request).await.unwrap();
         match res.status() {
@@ -155,21 +157,22 @@ impl Sheets {
         range: &str,
         value: Vec<Vec<String>>,
     ) -> Result<UpdateValuesResponse, APIError> {
-        let request = self.request(
-            Method::PUT,
-            &format!("spreadsheets/{}/values/{}", self.sheet_id, range),
-            ValueRange {
-                major_dimension: Some("ROWS".to_string()),
-                range: Some(range.to_string()),
-                values: Some(value),
-            },
-            Some(vec![
-                ("valueInputOption", "USER_ENTERED"),
-                ("responseValueRenderOption", "FORMATTED_VALUE"),
-                ("responseDateTimeRenderOption", "FORMATTED_STRING"),
-            ]),
-        );
-
+        let request = self
+            .request(
+                Method::PUT,
+                &format!("spreadsheets/{}/values/{}", self.sheet_id, range),
+                ValueRange {
+                    major_dimension: Some("ROWS".to_string()),
+                    range: Some(range.to_string()),
+                    values: Some(value),
+                },
+                Some(vec![
+                    ("valueInputOption", "USER_ENTERED"),
+                    ("responseValueRenderOption", "FORMATTED_VALUE"),
+                    ("responseDateTimeRenderOption", "FORMATTED_STRING"),
+                ]),
+            )
+            .await;
         let res = self.client.execute(request).await.unwrap();
         match res.status() {
             StatusCode::OK => Ok(res.json().await.unwrap()),
