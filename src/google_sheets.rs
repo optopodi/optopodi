@@ -1,11 +1,11 @@
 extern crate yup_oauth2 as oauth;
 
-use std::error;
 use std::fmt;
 
 use oauth::{AccessToken, InstalledFlowAuthenticator, InstalledFlowReturnMethod};
 use reqwest::{header, Client, Method, Request, StatusCode, Url};
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 
 /// Base endpoint for the Google Sheets API.
 const BASE_ENDPOINT: &str = "https://sheets.googleapis.com/v4/";
@@ -15,14 +15,14 @@ const BASE_ENDPOINT: &str = "https://sheets.googleapis.com/v4/";
 /// This is hard-coded because it'll compile to binary constant and be really nice and fast.
 ///
 /// Take for example A1:C3, a range that spreads over 3 rows and (_1:_3) and 3 columns (A_:C_)
-/// If we wanted to specify this range and we have a `Vec<Vec<u_32>>` specifying the values
+/// If we wanted to specify this range and we have a `Vec<Vec<u32>>` specifying the values
 /// that should be placed in this range, we could make that range like so:
 ///
 /// ```rust
 /// data = vec![vec![1, 2, 3,], vec![4, 5, 6], vec![7, 8, 9]];
 ///
 /// let start_column = ASCII_UPPER[0];
-/// let end_column = ASCII_UPPER[data.len()];
+/// let end_column = ASCII_UPPER[data[0].len()];
 /// let start_row = 0;
 /// let end_row = data.len();
 /// let range = format!("{}{}:{}{}", start_column, start_row, end_column, end_row);
@@ -121,23 +121,27 @@ pub fn get_a1_notation(
     }
 }
 
-pub trait IntoValueRangeData {
-    fn into_value_range_data(&self) -> Vec<String>;
-}
-
 pub struct Sheets {
     token: AccessToken,
     client: Client,
     sheet_id: String,
 }
 
-impl Sheets {
-    pub async fn initialize(sheet_id: &str) -> Result<Self, APIError> {
-        let token = match Sheets::authenticate().await {
-            Ok(t) => t,
-            Err(e) => return Err(e),
-        };
+type Result<T, E = ApiError> = std::result::Result<T, E>;
 
+impl Sheets {
+    pub fn new(token: AccessToken, sheet_id: &str) -> Result<Self> {
+        let client = Client::builder().build().context(ClientBuildFail {})?;
+
+        Ok(Self {
+            token,
+            client,
+            sheet_id: String::from(sheet_id),
+        })
+    }
+
+    pub async fn initialize(sheet_id: &str) -> Result<Self> {
+        let token = Sheets::authenticate().await?;
         Sheets::new(token, sheet_id)
     }
 
@@ -145,45 +149,30 @@ impl Sheets {
         format!("https://docs.google.com/spreadsheets/d/{}/", self.sheet_id)
     }
 
-    pub async fn authenticate() -> Result<AccessToken, APIError> {
+    pub async fn authenticate() -> Result<AccessToken> {
         // Read application secret from a file. Sometimes it's easier to compile it directly into the binary.
         let secret = oauth::read_application_secret("client_secret.json")
             .await
-            .expect("Could not read Client Secret from file `client_secret.json`");
+            .context(AuthenticateError {
+                meta: "Failed to configure secret from 'client_secret.json'",
+            })?;
 
         // All authentication tokens are persisted to a file named `tokencache.json`.
         // The authenticator takes care of caching tokens to disk and refreshing tokens once they've expired.
-        let auth = match InstalledFlowAuthenticator::builder(
-            secret,
-            InstalledFlowReturnMethod::HTTPRedirect,
-        )
-        .persist_tokens_to_disk("tokencache.json")
-        .build()
-        .await
-        {
-            Ok(a) => a,
-            Err(e) => return Err(APIError::from(e)),
-        };
+        let auth =
+            InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::HTTPRedirect)
+                .persist_tokens_to_disk("tokencache.json")
+                .build()
+                .await
+                .context(AuthenticateError { meta: "Failed to build auth from secret. Try deleting 'tokencache.json' and running again."})?;
 
         let scope = &["https://www.googleapis.com/auth/spreadsheets"];
-        match auth.token(scope).await {
-            Ok(tok) => Ok(tok),
-            Err(err) => panic!("Could not authenticate properly {:?}", err),
-        }
-    }
 
-    pub fn new(token: AccessToken, sheet_id: &str) -> Result<Self, APIError> {
-        match Client::builder().build() {
-            Ok(client) => Ok(Self {
-                token,
-                client,
-                sheet_id: String::from(sheet_id),
-            }),
-            Err(_) => Err(APIError {
-                status_code: StatusCode::from_u16(500).unwrap(),
-                body: "Could not instantiate client".to_string(),
-            }),
-        }
+        let token = auth.token(scope).await.context(TokenError {
+            scope: String::from(scope[0]),
+        })?;
+
+        Ok(token)
     }
 
     /// Makes a request to the Google Sheets API
@@ -242,7 +231,7 @@ impl Sheets {
     /// See [Google Sheets Docs: `spreadsheets.values.append`]
     ///
     /// [Google Sheets Docs: `spreadsheets.values.append`]: https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/append
-    pub async fn append(&self, data: Vec<String>) -> Result<UpdateValuesResponse, APIError> {
+    pub async fn append(&self, data: Vec<String>) -> Result<UpdateValuesResponse> {
         let request = self
             .request(
                 Method::POST,
@@ -264,9 +253,10 @@ impl Sheets {
             .await;
 
         let res = self.client.execute(request).await.unwrap();
+
         match res.status() {
             StatusCode::OK => Ok(res.json().await.unwrap()),
-            status_code => Err(APIError {
+            status_code => Err(ApiError::GoogleSheetsApi {
                 status_code,
                 body: res.text().await.unwrap(),
             }),
@@ -277,10 +267,7 @@ impl Sheets {
     ///
     /// [`spreadsheets.values.batchUpdate` endpoint]: https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdate
     #[allow(dead_code)]
-    pub async fn batch_update(
-        &self,
-        data: Vec<Vec<String>>,
-    ) -> Result<BatchUpdateValuesResponse, APIError> {
+    pub async fn batch_update(&self, data: Vec<Vec<String>>) -> Result<BatchUpdateValuesResponse> {
         let request = self
             .request(
                 Method::POST,
@@ -295,14 +282,14 @@ impl Sheets {
         let res = self.client.execute(request).await.unwrap();
         match res.status() {
             StatusCode::OK => Ok(res.json().await.unwrap()),
-            status_code => Err(APIError {
+            status_code => Err(ApiError::GoogleSheetsApi {
                 status_code,
                 body: res.text().await.unwrap(),
             }),
         }
     }
 
-    pub async fn clear_sheet(&self) -> Result<UpdateValuesResponse, APIError> {
+    pub async fn clear_sheet(&self) -> Result<UpdateValuesResponse> {
         let request = self
             .request(
                 Method::POST,
@@ -315,7 +302,7 @@ impl Sheets {
         let res = self.client.execute(request).await.unwrap();
         match res.status() {
             StatusCode::OK => Ok(res.json().await.unwrap()),
-            s => Err(APIError {
+            s => Err(ApiError::GoogleSheetsApi {
                 status_code: s,
                 body: res.text().await.unwrap(),
             }),
@@ -326,7 +313,7 @@ impl Sheets {
     pub async fn refresh_entire_sheet(
         &self,
         value: Vec<Vec<String>>,
-    ) -> Result<UpdateValuesResponse, APIError> {
+    ) -> Result<UpdateValuesResponse> {
         self.clear_sheet().await?;
         self.update_values("A1", value).await
     }
@@ -336,7 +323,7 @@ impl Sheets {
         &self,
         range: &str,
         value: Vec<Vec<String>>,
-    ) -> Result<UpdateValuesResponse, APIError> {
+    ) -> Result<UpdateValuesResponse> {
         let request = self
             .request(
                 Method::PUT,
@@ -356,7 +343,7 @@ impl Sheets {
         let res = self.client.execute(request).await.unwrap();
         match res.status() {
             StatusCode::OK => Ok(res.json().await.unwrap()),
-            status_code => Err(APIError {
+            status_code => Err(ApiError::GoogleSheetsApi {
                 status_code,
                 body: res.text().await.unwrap(),
             }),
@@ -364,32 +351,25 @@ impl Sheets {
     }
 }
 
-#[derive(Debug)]
-pub struct APIError {
-    pub status_code: StatusCode,
-    pub body: String,
-}
+#[derive(Debug, Snafu)]
+pub enum ApiError {
+    #[snafu(display("Could not authenticate properly. {}: {}", meta, source))]
+    AuthenticateError {
+        source: std::io::Error,
+        meta: String,
+    },
 
-impl fmt::Display for APIError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "APIError: '{}'\nbody: {}", self.status_code, self.body)
-    }
-}
+    #[snafu(display("Client failed to build: {}", source))]
+    ClientBuildFail { source: reqwest::Error },
 
-impl error::Error for APIError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        // Generic error, underlying cause isn't tracked.
-        None
-    }
-}
+    #[snafu(display("Token does not have proper scope {}: {}", scope, source))]
+    TokenError { source: oauth::Error, scope: String },
 
-impl From<std::io::Error> for APIError {
-    fn from(error: std::io::Error) -> Self {
-        APIError {
-            status_code: StatusCode::NOT_FOUND,
-            body: format!("{}", error),
-        }
-    }
+    #[snafu(display("Error from Google Sheets API. {} {}", status_code, body))]
+    GoogleSheetsApi {
+        status_code: StatusCode,
+        body: String,
+    },
 }
 
 /// Use for any `POST` request that needs an empty body.
@@ -419,7 +399,7 @@ pub struct ValueRange {
     ///
     /// When appending values, this field represents the range to search for a table, after which values will be appended.
     pub range: Option<String>,
-
+    /// The values
     pub values: Option<Vec<Vec<String>>>,
     /// The major dimension of the values.
     ///

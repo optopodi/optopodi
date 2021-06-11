@@ -94,10 +94,12 @@ async fn main() {
                         }
                     };
 
+                    // clear existing data from sheet
                     if let Err(e) = sheets.clear_sheet().await {
                         println!("There's been an error clearing the sheet: {}", e);
                     }
 
+                    // add headers / column titles
                     if let Err(e) = sheets
                         .append(vec![
                             String::from("Repository Name"),
@@ -108,17 +110,17 @@ async fn main() {
                         println!("There's been an error appending the column names {}", e);
                     }
 
+                    // wait for `tx` to send data
                     while let Some(data) = rx.recv().await {
                         let user_err_message = format!("Had trouble appending repo {}", &data[0]);
                         if let Err(e) = sheets.append(data).await {
                             println!("{}: {}", user_err_message, e);
                         }
                     }
-
                     println!(
                         "Finished exporting data to sheet: {}",
                         sheets.get_link_to_sheet()
-                    )
+                    );
                 }
                 // User wants to print to terminal, they did not specify a google sheet ID
                 None => {

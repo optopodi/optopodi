@@ -369,6 +369,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sheets",
+ "snafu",
  "tokio",
  "url",
  "yup-oauth2",
