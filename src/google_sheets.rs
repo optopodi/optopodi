@@ -1,9 +1,5 @@
 extern crate yup_oauth2 as oauth;
 
-// A-Z 26^0     26^1 - 1        0  – 25
-// AA - ZZ      26^1 - 26^2     26 - 701
-// AAA-ZZZ      26^2 -
-
 use std::fmt;
 
 use oauth::{AccessToken, InstalledFlowAuthenticator, InstalledFlowReturnMethod};
