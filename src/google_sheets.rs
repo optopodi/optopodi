@@ -47,6 +47,10 @@ const ASCII_UPPER: [char; 26] = [
 // TODO--
 // write unit tests
 fn get_column_notation(column: usize) -> String {
+    if column < 26 {
+        return format!("{}", ASCII_UPPER[column]);
+    }
+
     // this will be rightmost value which will identify
     // which column this is (regardless of grouping)
     // i.e., column 28 would be associated "AB", so this would be the "B"
@@ -55,11 +59,27 @@ fn get_column_notation(column: usize) -> String {
     //i.e., column 28 would be associated "AB", so this would be the "A"
     let column_rep = column / 26;
 
-    if column_rep > 1 {
-        format!("{}{}", ASCII_UPPER[column_rep], ASCII_UPPER[alpha_overflow])
+    let mut st = String::new();
+    if column_rep > 26 {
+        for _ in 0..((column_rep / 26) % 26) + 1 {
+            st.push(ASCII_UPPER[(column_rep / 26) % 26 - 1]);
+        }
     } else {
-        format!("{}", ASCII_UPPER[alpha_overflow])
+        st.push(ASCII_UPPER[column_rep - 1]);
     }
+
+    format!("{}{}", st, ASCII_UPPER[alpha_overflow])
+}
+
+#[test]
+fn test_column_notation() {
+    assert_eq!(get_column_notation(0), "A");
+    assert_eq!(get_column_notation(3), "D");
+    assert_eq!(get_column_notation(25), "Z");
+    assert_eq!(get_column_notation(26), "AA");
+    assert_eq!(get_column_notation(52), "BA");
+    assert_eq!(get_column_notation(702), "AAA");
+    assert_eq!(get_column_notation(703), "AAB");
 }
 
 /// This is a helper function to retrieve valid A1 notation given the starting and ending index for
