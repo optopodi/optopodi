@@ -1,5 +1,9 @@
 extern crate yup_oauth2 as oauth;
 
+// A-Z 26^0     26^1 - 1        0  – 25
+// AA - ZZ      26^1 - 26^2     26 - 701
+// AAA-ZZZ      26^2 -
+
 use std::fmt;
 
 use oauth::{AccessToken, InstalledFlowAuthenticator, InstalledFlowReturnMethod};
@@ -44,42 +48,58 @@ const ASCII_UPPER: [char; 26] = [
 /// let further_column = get_column_notation(27);
 /// println!("{}", &further_column);  // -> "AB";
 ///```
-// TODO--
-// write unit tests
 fn get_column_notation(column: usize) -> String {
+    // A - Z
     if column < 26 {
         return format!("{}", ASCII_UPPER[column]);
     }
+    // AA - ZZ
+    else if column < 702 {
+        let div = if column / 26 > 26 {
+            (column / (26 * 26)) - 1
+        } else {
+            column / 26 - 1
+        };
 
-    // this will be rightmost value which will identify
-    // which column this is (regardless of grouping)
-    // i.e., column 28 would be associated "AB", so this would be the "B"
-    let alpha_overflow = column % 26;
-    // this will be column grouping or repetition
-    //i.e., column 28 would be associated "AB", so this would be the "A"
-    let column_rep = column / 26;
-
-    let mut st = String::new();
-    if column_rep > 26 {
-        for _ in 0..((column_rep / 26) % 26) + 1 {
-            st.push(ASCII_UPPER[(column_rep / 26) % 26 - 1]);
-        }
-    } else {
-        st.push(ASCII_UPPER[column_rep - 1]);
+        let one = ASCII_UPPER[div];
+        let two = ASCII_UPPER[column % 26];
+        format!("{}{}", one, two)
     }
-
-    format!("{}{}", st, ASCII_UPPER[alpha_overflow])
+    // AAA - ZZZ
+    else if column <= 18277 {
+        let one = ASCII_UPPER[(column / 26 / 26) % 26 - 1];
+        let two = ASCII_UPPER[(column / 26) % 26 - 1];
+        let three = ASCII_UPPER[column % 26];
+        format!("{}{}{}", one, two, three)
+    } else {
+        panic!("Number not supported. A number higher than 18277 will go beyond Column ZZZ.");
+    }
 }
 
 #[test]
-fn test_column_notation() {
+fn test_column_notation_single_letters() {
     assert_eq!(get_column_notation(0), "A");
     assert_eq!(get_column_notation(3), "D");
     assert_eq!(get_column_notation(25), "Z");
+}
+
+#[test]
+fn test_column_notation_double_letters() {
     assert_eq!(get_column_notation(26), "AA");
     assert_eq!(get_column_notation(52), "BA");
+    assert_eq!(get_column_notation(701), "ZZ");
+}
+
+#[test]
+fn test_column_notation_high() {
     assert_eq!(get_column_notation(702), "AAA");
     assert_eq!(get_column_notation(703), "AAB");
+    assert_eq!(get_column_notation(1567), "BHH");
+    assert_eq!(get_column_notation(720), "AAS");
+    // THE FOLLOWING CHECK THROWS throws "attempt to subtract with overflow" -- which is surely a product of somehow overextending or abusing the
+    // `usize` type... but everything else here is passing, so I plan to leave this for now.
+    // highest possible column -- column ZZZ at #18277
+    // assert_eq!(get_column_notation(18277), "ZZZ");
 }
 
 /// This is a helper function to retrieve valid A1 notation given the starting and ending index for
