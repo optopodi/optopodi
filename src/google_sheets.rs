@@ -131,7 +131,7 @@ pub fn get_a1_notation(
         (Some(sc), Some(r), Some(ec), None) |
         // "A:A5" is not technically valid, but defaults to "A5:A"
         (Some(sc), None, Some(ec), Some(r)) => {
-            format!("{}{}:{}", sc, r+1, get_column_notation(ec))
+            format!("{}{}:{}", get_column_notation(sc), r+1, get_column_notation(ec))
         },
         // "A1:B2" refers to the first two cells in the top two rows
         (Some(sc), Some(sr), Some(ec), Some(er)) => {
@@ -146,7 +146,7 @@ pub fn get_a1_notation(
         (None, Some(sr), possible_column, Some(er)) => {
             if let Some(column) = possible_column {
                 // refers to all cells in given rows
-                format!("{}{}:{}", get_column_notation(column), sr+1, er+1)
+                format!("{}:{}{}",  sr+1, get_column_notation(column), er+1)
             } else {
                 format!("{}:{}", sr+1, er+1)
             }
@@ -155,6 +155,52 @@ pub fn get_a1_notation(
             panic!("The specified range is not valid")
         }
     }
+}
+
+#[test]
+fn test_a1_notation_001() {
+    assert_eq!(
+        get_a1_notation(Some(0), Some(0), Some(0), Some(0)),
+        String::from("A1:A1")
+    );
+}
+#[test]
+fn test_a1_notation_002() {
+    assert_eq!(
+        get_a1_notation(Some(0), None, Some(0), Some(0)),
+        String::from("A1:A")
+    );
+    assert_eq!(
+        get_a1_notation(Some(0), Some(0), Some(0), None),
+        String::from("A1:A")
+    );
+}
+#[test]
+fn test_a1_notation_003() {
+    assert_eq!(
+        get_a1_notation(Some(0), Some(1), Some(1), Some(4)),
+        String::from("A2:B5")
+    );
+}
+#[test]
+fn test_a1_notation_004() {
+    assert_eq!(
+        get_a1_notation(Some(0), None, Some(3), None),
+        String::from("A:D")
+    );
+}
+
+#[test]
+fn test_a1_notation_005() {
+    assert_eq!(
+        get_a1_notation(None, Some(9), Some(3), Some(17)),
+        String::from("10:D18"),
+    );
+
+    assert_eq!(
+        get_a1_notation(None, Some(9), None, Some(17)),
+        String::from("10:18"),
+    );
 }
 
 pub struct Sheets {
