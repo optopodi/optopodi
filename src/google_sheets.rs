@@ -51,23 +51,25 @@ fn get_column_notation(column: usize) -> String {
     }
     // AA - ZZ
     else if column < 702 {
-        let div = if column / 26 > 26 {
-            (column / (26 * 26)) - 1
-        } else {
-            column / 26 - 1
-        };
-
-        let one = ASCII_UPPER[div];
+        let one = ASCII_UPPER[column / 26 - 1];
         let two = ASCII_UPPER[column % 26];
         format!("{}{}", one, two)
     }
     // AAA - ZZZ
     else if column <= 18277 {
-        let one = ASCII_UPPER[(column / 26 / 26) % 26 - 1];
-        let two = ASCII_UPPER[(column / 26) % 26 - 1];
+        // honestly don't understand why this works
+        let first = if column / 26 / 26 >= 26 {
+            26 - (column / 26 / 26) % 26
+        } else {
+            column / 26 / 26 - 1
+        };
+        let one = ASCII_UPPER[first];
+        let two = ASCII_UPPER[(column / 26 - 1) % 26];
         let three = ASCII_UPPER[column % 26];
         format!("{}{}{}", one, two, three)
-    } else {
+    }
+    // Number not supported — Over Column ZZZ
+    else {
         panic!("Number not supported. A number higher than 18277 will go beyond Column ZZZ.");
     }
 }
@@ -82,6 +84,7 @@ fn test_column_notation_single_letters() {
 #[test]
 fn test_column_notation_double_letters() {
     assert_eq!(get_column_notation(26), "AA");
+    assert_eq!(get_column_notation(27), "AB");
     assert_eq!(get_column_notation(52), "BA");
     assert_eq!(get_column_notation(701), "ZZ");
 }
@@ -92,10 +95,11 @@ fn test_column_notation_high() {
     assert_eq!(get_column_notation(703), "AAB");
     assert_eq!(get_column_notation(1567), "BHH");
     assert_eq!(get_column_notation(720), "AAS");
-    // THE FOLLOWING CHECK THROWS throws "attempt to subtract with overflow" -- which is surely a product of somehow overextending or abusing the
-    // `usize` type... but everything else here is passing, so I plan to leave this for now.
+    assert_eq!(get_column_notation(14838), "UXS");
+    assert_eq!(get_column_notation(17439), "YTT");
+    assert_eq!(get_column_notation(18276), "ZZY");
     // highest possible column -- column ZZZ at #18277
-    // assert_eq!(get_column_notation(18277), "ZZZ");
+    assert_eq!(get_column_notation(18277), "ZZZ");
 }
 
 /// This is a helper function to retrieve valid A1 notation given the starting and ending index for
