@@ -10,15 +10,15 @@ use snafu::{ResultExt, Snafu};
 /// Base endpoint for the Google Sheets API.
 const BASE_ENDPOINT: &str = "https://sheets.googleapis.com/v4/";
 
-/// used for convenient access the "A" side of "A1" notation
+/// Used for convenient access to the "A" side of "A1" notation
 ///
-/// This is hard-coded because it'll compile to binary constant and be really nice and fast.
+/// This is hard-coded because it'll compile to a binary constant and it'll be nice and fast.
 ///
-/// Take for example A1:C3, a range that spreads over 3 rows and (_1:_3) and 3 columns (A_:C_)
+/// Take for example `A1:C3`, a range that spreads over 3 rows (_1:_3) and 3 columns (A_:C_)
 /// If we wanted to specify this range and we have a `Vec<Vec<u32>>` specifying the values
 /// that should be placed in this range, we could make that range like so:
 ///
-/// ```rust
+/// ```ignore
 /// data = vec![vec![1, 2, 3,], vec![4, 5, 6], vec![7, 8, 9]];
 ///
 /// let start_column = ASCII_UPPER[0];
@@ -37,7 +37,7 @@ const ASCII_UPPER: [char; 26] = [
 ///
 /// For instance, the first column in a google sheets page is "A".
 ///
-/// ```rust
+/// ```ignore
 /// let first_column_notation = get_column_notation(0);
 /// println!("{}", &first_column_notation); // -> "A"
 ///
@@ -74,34 +74,6 @@ fn get_column_notation(column: usize) -> String {
     }
 }
 
-#[test]
-fn test_column_notation_single_letters() {
-    assert_eq!(get_column_notation(0), "A");
-    assert_eq!(get_column_notation(3), "D");
-    assert_eq!(get_column_notation(25), "Z");
-}
-
-#[test]
-fn test_column_notation_double_letters() {
-    assert_eq!(get_column_notation(26), "AA");
-    assert_eq!(get_column_notation(27), "AB");
-    assert_eq!(get_column_notation(52), "BA");
-    assert_eq!(get_column_notation(701), "ZZ");
-}
-
-#[test]
-fn test_column_notation_high() {
-    assert_eq!(get_column_notation(702), "AAA");
-    assert_eq!(get_column_notation(703), "AAB");
-    assert_eq!(get_column_notation(1567), "BHH");
-    assert_eq!(get_column_notation(720), "AAS");
-    assert_eq!(get_column_notation(14838), "UXS");
-    assert_eq!(get_column_notation(17439), "YTT");
-    assert_eq!(get_column_notation(18276), "ZZY");
-    // highest possible column -- column ZZZ at #18277
-    assert_eq!(get_column_notation(18277), "ZZZ");
-}
-
 /// This is a helper function to retrieve valid A1 notation given the starting and ending index for
 /// columns and rows in a zero-index fashion. This is used in zero-index fashion to make it easier to work
 /// with arrays `Vec` of data!
@@ -111,19 +83,19 @@ fn test_column_notation_high() {
 /// # Examples
 ///
 /// ```rust
-/// const top_left_nine_cells = get_a1_notation(Some(0), Some(0), Some(2), Some(2));
+/// use github_metrics::google_sheets::get_a1_notation;
+///
+/// let top_left_nine_cells = get_a1_notation(Some(0), Some(0), Some(2), Some(2));
 /// println!("{}", top_left_nine_cells);  // -> "A1:C3"
 ///
-/// const rows_five_through_nine = get_a1_notation(None, Some(4), None, Some(8));
+/// let rows_five_through_nine = get_a1_notation(None, Some(4), None, Some(8));
 /// println!("{}", rows_five_through_nine); // -> "5:9"
 ///
-/// const rows_five_through_nine_third_column_on = get_a1_notation(None, Some(4), Some(2), Some(8));
+/// let rows_five_through_nine_third_column_on = get_a1_notation(None, Some(4), Some(2), Some(8));
 /// println!("{}", rows_five_through_nine_third_column_on); // -> "5:C9"
 /// ```
 ///
 /// [Google Sheets Docs: A1 Notation]: https://developers.google.com/sheets/api/guides/concepts#expandable-1
-// TODO--
-// write unit tests
 pub fn get_a1_notation(
     start_column: Option<usize>,
     start_row: Option<usize>,
@@ -159,52 +131,6 @@ pub fn get_a1_notation(
             panic!("The specified range is not valid")
         }
     }
-}
-
-#[test]
-fn test_a1_notation_001() {
-    assert_eq!(
-        get_a1_notation(Some(0), Some(0), Some(0), Some(0)),
-        String::from("A1:A1")
-    );
-}
-#[test]
-fn test_a1_notation_002() {
-    assert_eq!(
-        get_a1_notation(Some(0), None, Some(0), Some(0)),
-        String::from("A1:A")
-    );
-    assert_eq!(
-        get_a1_notation(Some(0), Some(0), Some(0), None),
-        String::from("A1:A")
-    );
-}
-#[test]
-fn test_a1_notation_003() {
-    assert_eq!(
-        get_a1_notation(Some(0), Some(1), Some(1), Some(4)),
-        String::from("A2:B5")
-    );
-}
-#[test]
-fn test_a1_notation_004() {
-    assert_eq!(
-        get_a1_notation(Some(0), None, Some(3), None),
-        String::from("A:D")
-    );
-}
-
-#[test]
-fn test_a1_notation_005() {
-    assert_eq!(
-        get_a1_notation(None, Some(9), Some(3), Some(17)),
-        String::from("10:D18"),
-    );
-
-    assert_eq!(
-        get_a1_notation(None, Some(9), None, Some(17)),
-        String::from("10:18"),
-    );
 }
 
 pub struct Sheets {
@@ -489,9 +415,9 @@ pub struct ValueRange {
     pub values: Option<Vec<Vec<String>>>,
     /// The major dimension of the values.
     ///
-    /// For output, if the spreadsheet data is: A1=1,B1=2,A2=3,B2=4, then requesting range=A1:B2,majorDimension=ROWS will return [[1,2],[3,4]], whereas requesting range=A1:B2,majorDimension=COLUMNS will return [[1,3],[2,4]].
+    /// For output, if the spreadsheet data is: A1=1,B1=2,A2=3,B2=4, then requesting range=A1:B2,majorDimension=ROWS will return `[[1,2],[3,4]]`, whereas requesting range=A1:B2,majorDimension=COLUMNS will return `[[1,3],[2,4]]`.
     ///
-    /// For input, with range=A1:B2,majorDimension=ROWS then [[1,2],[3,4]] will set A1=1,B1=2,A2=3,B2=4. With range=A1:B2,majorDimension=COLUMNS then [[1,2],[3,4]] will set A1=1,B1=3,A2=2,B2=4.
+    /// For input, with range=A1:B2,majorDimension=ROWS then `[[1,2],[3,4]]` will set A1=1,B1=2,A2=3,B2=4. With range=A1:B2,majorDimension=COLUMNS then `[[1,2],[3,4]]` will set A1=1,B1=3,A2=2,B2=4.
     ///
     /// When writing, if this field is not set, it defaults to "ROWS".
     #[serde(rename = "majorDimension")]
@@ -553,3 +479,83 @@ pub struct BatchUpdateValuesResponse {
     /// One `UpdateValuesResponse` per requested range, in the same order as the requests appeared.
     pub responses: Vec<UpdateValuesResponse>,
 }
+
+// #[cfg(tests)]
+// mod test {
+#[test]
+fn test_column_notation_single_letters() {
+    assert_eq!(get_column_notation(0), "A");
+    assert_eq!(get_column_notation(3), "D");
+    assert_eq!(get_column_notation(25), "Z");
+}
+
+#[test]
+fn test_column_notation_double_letters() {
+    assert_eq!(get_column_notation(26), "AA");
+    assert_eq!(get_column_notation(27), "AB");
+    assert_eq!(get_column_notation(52), "BA");
+    assert_eq!(get_column_notation(701), "ZZ");
+}
+
+#[test]
+fn test_column_notation_triple_letters() {
+    assert_eq!(get_column_notation(702), "AAA");
+    assert_eq!(get_column_notation(703), "AAB");
+    assert_eq!(get_column_notation(1567), "BHH");
+    assert_eq!(get_column_notation(720), "AAS");
+    assert_eq!(get_column_notation(14838), "UXS");
+    assert_eq!(get_column_notation(17439), "YTT");
+    assert_eq!(get_column_notation(18276), "ZZY");
+    // highest possible column -- column ZZZ at #18277
+    assert_eq!(get_column_notation(18277), "ZZZ");
+}
+
+#[test]
+fn test_a1_notation_001() {
+    assert_eq!(
+        get_a1_notation(Some(0), Some(0), Some(0), Some(0)),
+        String::from("A1:A1")
+    );
+}
+
+#[test]
+fn test_a1_notation_002() {
+    assert_eq!(
+        get_a1_notation(Some(0), None, Some(0), Some(0)),
+        String::from("A1:A")
+    );
+    assert_eq!(
+        get_a1_notation(Some(0), Some(0), Some(0), None),
+        String::from("A1:A")
+    );
+}
+
+#[test]
+fn test_a1_notation_003() {
+    assert_eq!(
+        get_a1_notation(Some(0), Some(1), Some(1), Some(4)),
+        String::from("A2:B5")
+    );
+}
+
+#[test]
+fn test_a1_notation_004() {
+    assert_eq!(
+        get_a1_notation(Some(0), None, Some(3), None),
+        String::from("A:D")
+    );
+}
+
+#[test]
+fn test_a1_notation_005() {
+    assert_eq!(
+        get_a1_notation(None, Some(9), Some(3), Some(17)),
+        String::from("10:D18"),
+    );
+
+    assert_eq!(
+        get_a1_notation(None, Some(9), None, Some(17)),
+        String::from("10:18"),
+    );
+}
+// }
