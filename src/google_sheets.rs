@@ -429,19 +429,14 @@ pub struct ValueRange {
 pub struct UpdateValuesResponse {
     #[serde(rename = "spreadsheetId")]
     pub spreadsheet_id: Option<String>,
-
     #[serde(rename = "updatedColumns")]
     pub updated_columns: Option<i32>,
-
     #[serde(rename = "updatedRange")]
     pub updated_range: Option<String>,
-
     #[serde(rename = "updatedRows")]
     pub updated_rows: Option<i32>,
-
     #[serde(rename = "updatedData")]
     pub updated_data: Option<ValueRange>,
-
     #[serde(rename = "updatedCells")]
     pub updated_cells: Option<i32>,
 }
