@@ -20,7 +20,7 @@ struct Config {
 
 #[derive(Debug, Deserialize, Default)]
 struct GithubConfig {
-    org: String,
+    org: Option<String>,
 }
 
 impl Config {
