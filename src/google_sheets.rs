@@ -475,8 +475,6 @@ pub struct BatchUpdateValuesResponse {
     pub responses: Vec<UpdateValuesResponse>,
 }
 
-// #[cfg(tests)]
-// mod test {
 #[test]
 fn test_column_notation_single_letters() {
     assert_eq!(get_column_notation(0), "A");
@@ -553,4 +551,3 @@ fn test_a1_notation_005() {
         String::from("10:18"),
     );
 }
-// }
