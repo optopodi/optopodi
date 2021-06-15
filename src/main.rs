@@ -3,8 +3,13 @@ use chrono::{Duration, Utc};
 use clap::{AppSettings, Clap};
 use fehler::throws;
 use octocrab::models::Repository;
+use tokio::sync::mpsc::{self, Receiver, Sender};
+
+mod google_sheets;
 mod token;
 mod util;
+
+use google_sheets::Sheets;
 
 #[derive(Clap, Debug)]
 #[clap(setting = AppSettings::ColoredHelp)]
@@ -20,6 +25,9 @@ enum Opt {
         /// Verbose mode (-v, -vv, -vvv, etc.)
         #[clap(short, long, parse(from_occurrences))]
         verbose: u8,
+
+        #[clap(short, long)]
+        google_sheet: Option<String>,
     },
 }
 
@@ -32,17 +40,121 @@ async fn main() {
         .build()?;
 
     match Opt::parse() {
-        Opt::List { org, verbose: _ } => {
-            let gh_org = octocrab.orgs(&org);
-            let repos: Vec<Repository> = all_repos(&gh_org).await?;
+        Opt::List {
+            org,
+            google_sheet: gs,
+            verbose: _,
+        } => {
+            // utilize `tokio::sync::mpsc` to decouple producing and consuming data
+            // `tx` can be used for sending entries (producing data)
+            // `rx` can be used to DO something with gathered data (consuming data)
+            let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
 
-            println!("# PRs,\tREPO\n--------------------");
-            for repo in &repos {
-                let count_prs = count_pull_requests(&octocrab, &org, &repo.name).await?;
-                println!("{},\t{}", count_prs, repo.name);
+            // produce all relevant data within this
+            tokio::spawn(async move {
+                if let Err(error_message) = gather_list_data(&tx, &octocrab, &org).await {
+                    println!("{}", error_message);
+                }
+            });
+
+            match gs {
+                // if user specified a google sheet ID, they must want to export data to that sheet
+                Some(sheet_id) => export_list_data_to_google_sheet(&mut rx, &sheet_id).await,
+                // User wants to print to terminal, they did not specify a google sheet ID
+                None => {
+                    println!("# of PRs\tRepository Name\n------------------------------");
+                    while let Some(entry) = rx.recv().await {
+                        println!("{}\t{}", &entry[1], &entry[0]);
+                    }
+                }
             }
         }
     }
+}
+
+/// Given a bounded single-consumer `Receiver` which holds relevant data, export each
+/// data entry to the Google Sheets instance with the associated `sheet_id`
+async fn export_list_data_to_google_sheet(rx: &mut Receiver<Vec<String>>, sheet_id: &str) {
+    let sheets = match Sheets::initialize(&sheet_id).await {
+        Ok(s) => s,
+        Err(e) => {
+            println!("There's been an error! {}", e);
+            return;
+        }
+    };
+
+    // clear existing data from sheet
+    if let Err(e) = sheets.clear_sheet().await {
+        println!("There's been an error clearing the sheet: {}", e);
+    }
+
+    // add headers / column titles
+    if let Err(e) = sheets
+        .append(vec![
+            String::from("Repository Name"),
+            String::from("# of PRs"),
+        ])
+        .await
+    {
+        println!("There's been an error appending the column names {}", e);
+    }
+
+    // wait for `tx` to send data
+    while let Some(data) = rx.recv().await {
+        let user_err_message = format!("Had trouble appending repo {}", &data[0]);
+        if let Err(e) = sheets.append(data).await {
+            println!("{}: {}", user_err_message, e);
+        }
+    }
+    println!(
+        "Finished exporting data to sheet: {}",
+        sheets.get_link_to_sheet()
+    );
+}
+
+/// Given a bounded multi-producer `Sender`, gather and send all relevant data
+/// for the `Opt::List` command. This currently includes:
+/// - each repository within the given GitHub Organization
+/// - and the number of Pull Requests created in the past 30 days.
+async fn gather_list_data(
+    tx: &Sender<Vec<String>>,
+    octo: &octocrab::Octocrab,
+    org_name: &str,
+) -> Result<(), String> {
+    let gh_org = octo.orgs(org_name);
+
+    let repos: Vec<Repository> = match all_repos(&gh_org).await {
+        Ok(r) => r,
+        Err(e) => {
+            return Err(format!(
+                "Ran into an error while gathering repositories! {}",
+                e
+            ))
+        }
+    };
+
+    for repo in &repos {
+        match count_pull_requests(&octo, &org_name, &repo.name).await {
+            Ok(count_prs) => {
+                if let Err(_) = tx
+                    .send(vec![String::from(&repo.name), count_prs.to_string()])
+                    .await
+                // here we send the entry in `[repository_name, count_prs]` format
+                {
+                    return Err(String::from("receiver dropped!"));
+                }
+            }
+
+            Err(e) => {
+                return Err(format!(
+                    "Ran into an issue while counting PRs for repository {}: {}",
+                    &repo.name, e
+                ))
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[throws]
