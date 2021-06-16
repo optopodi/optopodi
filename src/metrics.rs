@@ -31,6 +31,47 @@ impl ListReposForOrg {
     }
 }
 
+#[async_trait]
+impl Producer for ListReposForOrg {
+    fn column_names(&self) -> Vec<String> {
+        vec![String::from("Repository Name"), String::from("# of PRs")]
+    }
+
+    async fn spawn_producer_task(&self, tx: Sender<Vec<String>>) {
+        let org_name = &self.org_name;
+        let octo = octocrab::instance();
+        let gh_org = octo.orgs(org_name);
+
+        let repos: Vec<Repository> = match all_repos(&gh_org).await {
+            Ok(r) => r,
+            Err(e) => {
+                println!("Ran into an error while gathering repositories! {}", e);
+                vec![]
+            }
+        };
+
+        for repo in &repos {
+            match count_pull_requests(&org_name, &repo.name).await {
+                Ok(count_prs) => {
+                    if let Err(_) = tx
+                        .send(vec![String::from(&repo.name), count_prs.to_string()])
+                        .await
+                    {
+                        println!("receiver dropped!");
+                    }
+                }
+
+                Err(e) => {
+                    println!(
+                        "Ran into an issue while counting PRs for repository {}: {}",
+                        &repo.name, e
+                    );
+                }
+            }
+        }
+    }
+}
+
 pub struct ExportToSheets {
     sheet_id: String,
 }
@@ -39,21 +80,6 @@ impl ExportToSheets {
     pub fn new(sheet_id: &str) -> Self {
         ExportToSheets {
             sheet_id: String::from(sheet_id),
-        }
-    }
-}
-
-pub struct Print;
-
-#[async_trait]
-impl Consumer for Print {
-    async fn consume(&self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>) {
-        println!(
-            "{}\t{}\n------------------------",
-            column_names[1], column_names[0]
-        );
-        while let Some(entry) = rx.recv().await {
-            println!("{}\t\t{}", &entry[1], &entry[0]);
         }
     }
 }
@@ -93,43 +119,17 @@ impl Consumer for ExportToSheets {
     }
 }
 
+pub struct Print;
+
 #[async_trait]
-impl Producer for ListReposForOrg {
-    fn column_names(&self) -> Vec<String> {
-        vec![String::from("Repository Name"), String::from("# of PRs")]
-    }
-
-    async fn spawn_producer_task(&self, tx: Sender<Vec<String>>) {
-        let org_name = &self.org_name;
-        let octo = octocrab::instance();
-        let gh_org = octo.orgs(org_name);
-
-        let repos: Vec<Repository> = match all_repos(&gh_org).await {
-            Ok(r) => r,
-            Err(e) => {
-                println!("Ran into an error while gathering repositories! {}", e);
-                vec![]
-            }
-        };
-
-        for repo in &repos {
-            match count_pull_requests(&octo, &org_name, &repo.name).await {
-                Ok(count_prs) => {
-                    if let Err(_) = tx
-                        .send(vec![String::from(&repo.name), count_prs.to_string()])
-                        .await
-                    {
-                        println!("receiver dropped!");
-                    }
-                }
-
-                Err(e) => {
-                    println!(
-                        "Ran into an issue while counting PRs for repository {}: {}",
-                        &repo.name, e
-                    );
-                }
-            }
+impl Consumer for Print {
+    async fn consume(&self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>) {
+        println!(
+            "{}\t{}\n------------------------",
+            column_names[1], column_names[0]
+        );
+        while let Some(entry) = rx.recv().await {
+            println!("{}\t\t{}", &entry[1], &entry[0]);
         }
     }
 }
@@ -161,7 +161,8 @@ async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models
 /// println!("The 'rust-lang/rust' repo has had {} Pull Requests created in the last 30 days!", num_pull_requests);
 /// ```
 #[throws]
-async fn count_pull_requests(octo: &octocrab::Octocrab, org_name: &str, repo_name: &str) -> usize {
+async fn count_pull_requests(org_name: &str, repo_name: &str) -> usize {
+    let octo = octocrab::instance();
     let mut page = octo
         .pulls(org_name, repo_name)
         .list()
