@@ -11,7 +11,7 @@ use crate::util;
 #[async_trait]
 pub trait Producer {
     fn column_names(&self) -> Vec<String>;
-    fn spawn_producer_task(&self, tx: Sender<Vec<String>>);
+    fn spawn_producer_task<'a>(&'a self, tx: Sender<Vec<String>>);
     async fn producer_task(&self, tx: Sender<Vec<String>>);
 }
 
@@ -71,15 +71,12 @@ impl Producer for ListReposForOrg {
         }
     }
 
-    // `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-    fn spawn_producer_task(&self, tx: Sender<Vec<String>>) {
-        // this data (`&self`) with an anonymous lifetime `'_`...
-        let org_name = &self.org_name; // ... is captured here ...
+    fn spawn_producer_task<'a>(&'a self, tx: Sender<Vec<String>>) {
+        let org_name = self.org_name.to_owned();
 
-        // ... and required to live as long as `'static` here
         tokio::spawn(async move {
             let octo = octocrab::instance();
-            let gh_org = octo.orgs(org_name);
+            let gh_org = octo.orgs(&org_name[..]);
 
             let repos: Vec<Repository> = match all_repos(&gh_org).await {
                 Ok(r) => r,
