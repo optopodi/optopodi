@@ -11,7 +11,8 @@ use crate::util;
 #[async_trait]
 pub trait Producer {
     fn column_names(&self) -> Vec<String>;
-    async fn spawn_producer_task(&self, tx: Sender<Vec<String>>);
+    fn spawn_producer_task(&self, tx: Sender<Vec<String>>);
+    async fn producer_task(&self, tx: Sender<Vec<String>>);
 }
 
 #[async_trait]
@@ -37,10 +38,9 @@ impl Producer for ListReposForOrg {
         vec![String::from("Repository Name"), String::from("# of PRs")]
     }
 
-    async fn spawn_producer_task(&self, tx: Sender<Vec<String>>) {
-        let org_name = &self.org_name;
+    async fn producer_task(&self, tx: Sender<Vec<String>>) {
         let octo = octocrab::instance();
-        let gh_org = octo.orgs(org_name);
+        let gh_org = octo.orgs(&self.org_name);
 
         let repos: Vec<Repository> = match all_repos(&gh_org).await {
             Ok(r) => r,
@@ -51,7 +51,7 @@ impl Producer for ListReposForOrg {
         };
 
         for repo in &repos {
-            match count_pull_requests(&org_name, &repo.name).await {
+            match count_pull_requests(&self.org_name, &repo.name).await {
                 Ok(count_prs) => {
                     if let Err(_) = tx
                         .send(vec![String::from(&repo.name), count_prs.to_string()])
@@ -69,6 +69,46 @@ impl Producer for ListReposForOrg {
                 }
             }
         }
+    }
+
+    // `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+    fn spawn_producer_task(&self, tx: Sender<Vec<String>>) {
+        // this data (`&self`) with an anonymous lifetime `'_`...
+        let org_name = &self.org_name; // ... is captured here ...
+
+        // ... and required to live as long as `'static` here
+        tokio::spawn(async move {
+            let octo = octocrab::instance();
+            let gh_org = octo.orgs(org_name);
+
+            let repos: Vec<Repository> = match all_repos(&gh_org).await {
+                Ok(r) => r,
+                Err(e) => {
+                    println!("Ran into an error while gathering repositories! {}", e);
+                    vec![]
+                }
+            };
+
+            for repo in &repos {
+                match count_pull_requests(&org_name, &repo.name).await {
+                    Ok(count_prs) => {
+                        if let Err(_) = tx
+                            .send(vec![String::from(&repo.name), count_prs.to_string()])
+                            .await
+                        {
+                            println!("receiver dropped!");
+                        }
+                    }
+
+                    Err(e) => {
+                        println!(
+                            "Ran into an issue while counting PRs for repository {}: {}",
+                            &repo.name, e
+                        );
+                    }
+                }
+            }
+        });
     }
 }
 
@@ -161,7 +201,7 @@ async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models
 /// println!("The 'rust-lang/rust' repo has had {} Pull Requests created in the last 30 days!", num_pull_requests);
 /// ```
 #[throws]
-async fn count_pull_requests(org_name: &str, repo_name: &str) -> usize {
+async fn count_pull_requests(org_name: &String, repo_name: &str) -> usize {
     let octo = octocrab::instance();
     let mut page = octo
         .pulls(org_name, repo_name)

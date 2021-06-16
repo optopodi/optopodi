@@ -82,7 +82,7 @@ async fn main() {
             let column_names = list_repos.column_names();
 
             tokio::spawn(async move {
-                list_repos.spawn_producer_task(tx).await;
+                list_repos.spawn_producer_task(tx);
             });
 
             match gs {
