@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use fehler::throws;
 use octocrab::models::Repository;
+use serde::Deserialize;
 use tokio::sync::mpsc::Sender;
 
 use super::Producer;
@@ -40,7 +41,7 @@ impl Producer for ListReposForOrg {
         };
 
         for repo in &repos {
-            match count_pull_requests(&self.org_name, &repo.name).await {
+            match count_pull_requests_graphql(&self.org_name, &repo.name).await {
                 Ok(count_prs) => {
                     if let Err(e) = tx
                         .send(vec![String::from(&repo.name), count_prs.to_string()])
@@ -124,4 +125,42 @@ async fn count_pull_requests(org_name: &String, repo_name: &str) -> usize {
     }
 
     pr_count
+}
+
+#[derive(Deserialize, Debug)]
+struct Response<T> {
+    data: T,
+    errors: Option<Vec<serde_json::Value>>,
+}
+
+#[derive(Deserialize, Debug)]
+struct Data {
+    search: IssueCount,
+}
+
+#[derive(Deserialize, Debug)]
+struct IssueCount {
+    #[serde(rename = "issueCount")]
+    issue_count: u32,
+}
+
+#[throws]
+async fn count_pull_requests_graphql(org_name: &str, repo_name: &str) -> usize {
+    let octo = octocrab::instance();
+    let s = format!("{}", (Utc::now() - Duration::days(30)).date());
+    let mut chars = s.chars();
+    chars.next_back();
+    chars.next_back();
+    chars.next_back();
+    let thirty_days_ago_str = chars.as_str();
+
+    let query_string = format!(
+        "query {{ search(query:\"repo:{org_name}/{repo_name} is:pr created:>{thirty_days_ago}\", type:ISSUE, last:100) {{ issueCount }} }}",
+        org_name=org_name,
+        thirty_days_ago=thirty_days_ago_str,
+        repo_name=repo_name
+    );
+    let response: Response<Data> = octo.graphql(&query_string).await?;
+
+    response.data.search.issue_count as usize
 }
