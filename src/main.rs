@@ -74,17 +74,13 @@ async fn main() {
             google_sheet: gs,
             verbose: _,
         } => {
-            // utilize `tokio::sync::mpsc` to decouple producing and consuming data
-            // `tx` can be used for sending entries (producing data)
-            // `rx` can be used to DO something with gathered data (consuming data)
             let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
             let list_repos = ListReposForOrg::new(&org);
             let column_names = list_repos.column_names();
-            // list_repos.spawn_producer_task(tx);
 
             tokio::spawn(async move {
                 if let Err(e) = list_repos.producer_task(tx).await {
-                    println!("{}", e);
+                    println!("Encountered an error while collecting data: {}", e);
                 };
             });
 
