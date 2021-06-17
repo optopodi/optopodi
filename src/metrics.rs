@@ -16,7 +16,7 @@ pub trait Producer {
 
 #[async_trait]
 pub trait Consumer {
-    async fn consume(&self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>);
+    async fn consume(self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>);
 }
 
 pub struct ListReposForOrg {
@@ -88,7 +88,7 @@ impl ExportToSheets {
 
 #[async_trait]
 impl Consumer for ExportToSheets {
-    async fn consume(&self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>) {
+    async fn consume(self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>) {
         let sheets = match Sheets::initialize(&self.sheet_id).await {
             Ok(s) => s,
             Err(e) => {
@@ -125,7 +125,7 @@ pub struct Print;
 
 #[async_trait]
 impl Consumer for Print {
-    async fn consume(&self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>) {
+    async fn consume(self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>) {
         println!(
             "{}\t{}\n------------------------",
             column_names[1], column_names[0]

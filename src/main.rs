@@ -93,7 +93,7 @@ async fn main() {
                 }
                 // User wants to print to terminal, they did not specify a google sheet ID
                 None => {
-                    Print::consume(&Print, &mut rx, column_names).await;
+                    Print::consume(Print, &mut rx, column_names).await;
                 }
             }
         }
