@@ -155,7 +155,15 @@ async fn count_pull_requests_graphql(org_name: &str, repo_name: &str) -> usize {
     let thirty_days_ago_str = chars.as_str();
 
     let query_string = format!(
-        "query {{ search(query:\"repo:{org_name}/{repo_name} is:pr created:>{thirty_days_ago}\", type:ISSUE, last:100) {{ issueCount }} }}",
+        r#"query {{
+            search(
+                query:"repo:{org_name}/{repo_name} is:pr created:>{thirty_days_ago}", 
+                type:ISSUE, 
+                last:100,
+            ) {{
+                issueCount
+            }}
+        }}"#,
         org_name=org_name,
         thirty_days_ago=thirty_days_ago_str,
         repo_name=repo_name
