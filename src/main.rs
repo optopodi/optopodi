@@ -1,17 +1,16 @@
 use anyhow::Error;
-use chrono::{Duration, Utc};
 use clap::{AppSettings, Clap};
 use fehler::throws;
-use octocrab::models::Repository;
 use serde_derive::Deserialize;
 use std::path::Path;
-use tokio::sync::mpsc::{self, Receiver, Sender};
+use tokio::sync::mpsc;
 
 mod google_sheets;
+mod metrics;
 mod token;
 mod util;
 
-use google_sheets::Sheets;
+use metrics::{Consumer, ExportToSheets, ListReposForOrg, Print, Producer};
 
 #[derive(Debug, Deserialize, Default)]
 struct Config {
@@ -66,9 +65,8 @@ async fn main() {
         Config::default()
     };
     let token = token::github_token()?;
-    let octocrab = octocrab::Octocrab::builder()
-        .personal_token(token)
-        .build()?;
+    // initialize static octocrab API -- call `octocrab::instance()` anywhere to retrieve instance
+    octocrab::initialise(octocrab::Octocrab::builder().personal_token(token))?;
 
     match Opt::parse() {
         Opt::List {
@@ -76,182 +74,33 @@ async fn main() {
             google_sheet: gs,
             verbose: _,
         } => {
-            // utilize `tokio::sync::mpsc` to decouple producing and consuming data
-            // `tx` can be used for sending entries (producing data)
-            // `rx` can be used to DO something with gathered data (consuming data)
             let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
+            let list_repos = ListReposForOrg::new(&org);
+            let column_names = list_repos.column_names();
 
-            // produce all relevant data within this
             tokio::spawn(async move {
-                if let Err(error_message) = gather_list_data(&tx, &octocrab, &org).await {
-                    println!("{}", error_message);
-                }
+                if let Err(e) = list_repos.producer_task(tx).await {
+                    println!("Encountered an error while collecting data: {}", e);
+                };
             });
 
             match gs {
                 // if user specified a google sheet ID, they must want to export data to that sheet
-                Some(sheet_id) => export_list_data_to_google_sheet(&mut rx, &sheet_id).await,
+                Some(sheet_id) => {
+                    if let Err(e) = ExportToSheets::new(&sheet_id)
+                        .consume(&mut rx, column_names)
+                        .await
+                    {
+                        println!("Error exporting to sheets: {}", e);
+                    }
+                }
                 // User wants to print to terminal, they did not specify a google sheet ID
                 None => {
-                    println!("# of PRs\tRepository Name\n------------------------------");
-                    while let Some(entry) = rx.recv().await {
-                        println!("{}\t{}", &entry[1], &entry[0]);
+                    if let Err(e) = Print::consume(Print, &mut rx, column_names).await {
+                        println!("Error while printing results: {}", e);
                     }
                 }
             }
         }
     }
-}
-
-/// Given a bounded single-consumer `Receiver` which holds relevant data, export each
-/// data entry to the Google Sheets instance with the associated `sheet_id`
-async fn export_list_data_to_google_sheet(rx: &mut Receiver<Vec<String>>, sheet_id: &str) {
-    let sheets = match Sheets::initialize(&sheet_id).await {
-        Ok(s) => s,
-        Err(e) => {
-            println!("There's been an error! {}", e);
-            return;
-        }
-    };
-
-    // clear existing data from sheet
-    if let Err(e) = sheets.clear_sheet().await {
-        println!("There's been an error clearing the sheet: {}", e);
-    }
-
-    // add headers / column titles
-    if let Err(e) = sheets
-        .append(vec![
-            String::from("Repository Name"),
-            String::from("# of PRs"),
-        ])
-        .await
-    {
-        println!("There's been an error appending the column names {}", e);
-    }
-
-    // wait for `tx` to send data
-    while let Some(data) = rx.recv().await {
-        let user_err_message = format!("Had trouble appending repo {}", &data[0]);
-        if let Err(e) = sheets.append(data).await {
-            println!("{}: {}", user_err_message, e);
-        }
-    }
-    println!(
-        "Finished exporting data to sheet: {}",
-        sheets.get_link_to_sheet()
-    );
-}
-
-/// Given a bounded multi-producer `Sender`, gather and send all relevant data
-/// for the `Opt::List` command. This currently includes:
-/// - each repository within the given GitHub Organization
-/// - and the number of Pull Requests created in the past 30 days.
-async fn gather_list_data(
-    tx: &Sender<Vec<String>>,
-    octo: &octocrab::Octocrab,
-    org_name: &str,
-) -> Result<(), String> {
-    let gh_org = octo.orgs(org_name);
-
-    let repos: Vec<Repository> = match all_repos(&gh_org).await {
-        Ok(r) => r,
-        Err(e) => {
-            return Err(format!(
-                "Ran into an error while gathering repositories! {}",
-                e
-            ))
-        }
-    };
-
-    for repo in &repos {
-        match count_pull_requests(&octo, &org_name, &repo.name).await {
-            Ok(count_prs) => {
-                if let Err(_) = tx
-                    .send(vec![String::from(&repo.name), count_prs.to_string()])
-                    .await
-                // here we send the entry in `[repository_name, count_prs]` format
-                {
-                    return Err(String::from("receiver dropped!"));
-                }
-            }
-
-            Err(e) => {
-                return Err(format!(
-                    "Ran into an issue while counting PRs for repository {}: {}",
-                    &repo.name, e
-                ))
-            }
-        }
-    }
-
-    Ok(())
-}
-
-#[throws]
-async fn all_repos(org: &octocrab::orgs::OrgHandler<'_>) -> Vec<octocrab::models::Repository> {
-    util::accumulate_pages(|page| org.list_repos().page(page).send()).await?
-}
-
-/// count the number of pull requests created in the last 30 days for the given repository within the given GitHub organization
-///
-/// # Arguments
-///
-/// - `octo` — The instance of `octocrab::Octocrab` that should be used to make queries to GitHub API
-/// - `org_name` — The name of the github organization that owns the specified repository
-/// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the `org_name` Github Organization
-///
-/// # Example
-///
-/// ```
-/// use github-metrics;
-/// use octocrab;
-/// use std::string::String;
-///
-/// let octocrab_instance = octocrab::Octocrab::builder().personal_token("SOME_GITHUB_TOKEN").build()?;
-///
-/// const num_pull_requests = github-metrics::count_pull_requests(octocrab_instance, "rust-lang", "rust");
-///
-/// println!("The 'rust-lang/rust' repo has had {} Pull Requests created in the last 30 days!", num_pull_requests);
-/// ```
-#[throws]
-async fn count_pull_requests(octo: &octocrab::Octocrab, org_name: &str, repo_name: &str) -> usize {
-    let mut page = octo
-        .pulls(org_name, repo_name)
-        .list()
-        // take all PRs -- open or closed
-        .state(octocrab::params::State::All)
-        // sort by date created
-        .sort(octocrab::params::pulls::Sort::Created)
-        // start with most recent
-        .direction(octocrab::params::Direction::Descending)
-        .per_page(255)
-        .send()
-        .await?;
-
-    let thirty_days_ago = Utc::now() - Duration::days(30);
-    let mut pr_count: usize = 0;
-
-    loop {
-        let in_last_thirty_days = page
-            .items
-            .iter()
-            // take while PRs have been created within the past thirty days
-            .take_while(|pr| pr.created_at > thirty_days_ago)
-            .count();
-
-        pr_count += in_last_thirty_days;
-        if in_last_thirty_days < page.items.len() {
-            // No need to visit the next page.
-            break;
-        }
-
-        if let Some(p) = octo.get_page(&page.next).await? {
-            page = p;
-        } else {
-            break;
-        }
-    }
-
-    pr_count
 }
