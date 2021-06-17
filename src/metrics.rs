@@ -11,8 +11,7 @@ use crate::util;
 #[async_trait]
 pub trait Producer {
     fn column_names(&self) -> Vec<String>;
-    fn spawn_producer_task<'a>(&'a self, tx: Sender<Vec<String>>);
-    async fn producer_task(&self, tx: Sender<Vec<String>>);
+    async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), String>;
 }
 
 #[async_trait]
@@ -38,74 +37,40 @@ impl Producer for ListReposForOrg {
         vec![String::from("Repository Name"), String::from("# of PRs")]
     }
 
-    async fn producer_task(&self, tx: Sender<Vec<String>>) {
+    async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), String> {
         let octo = octocrab::instance();
         let gh_org = octo.orgs(&self.org_name);
 
         let repos: Vec<Repository> = match all_repos(&gh_org).await {
             Ok(r) => r,
             Err(e) => {
-                println!("Ran into an error while gathering repositories! {}", e);
-                vec![]
+                return Err(format!(
+                    "Ran into an error while gathering repositories! {}",
+                    e
+                ));
             }
         };
 
         for repo in &repos {
             match count_pull_requests(&self.org_name, &repo.name).await {
                 Ok(count_prs) => {
-                    if let Err(_) = tx
+                    if let Err(e) = tx
                         .send(vec![String::from(&repo.name), count_prs.to_string()])
                         .await
                     {
-                        println!("receiver dropped!");
+                        return Err(format!("{:#?}", e));
                     }
                 }
-
                 Err(e) => {
-                    println!(
+                    return Err(format!(
                         "Ran into an issue while counting PRs for repository {}: {}",
                         &repo.name, e
-                    );
+                    ));
                 }
             }
         }
-    }
 
-    fn spawn_producer_task<'a>(&'a self, tx: Sender<Vec<String>>) {
-        let org_name = self.org_name.to_owned();
-
-        tokio::spawn(async move {
-            let octo = octocrab::instance();
-            let gh_org = octo.orgs(&org_name[..]);
-
-            let repos: Vec<Repository> = match all_repos(&gh_org).await {
-                Ok(r) => r,
-                Err(e) => {
-                    println!("Ran into an error while gathering repositories! {}", e);
-                    vec![]
-                }
-            };
-
-            for repo in &repos {
-                match count_pull_requests(&org_name, &repo.name).await {
-                    Ok(count_prs) => {
-                        if let Err(_) = tx
-                            .send(vec![String::from(&repo.name), count_prs.to_string()])
-                            .await
-                        {
-                            println!("receiver dropped!");
-                        }
-                    }
-
-                    Err(e) => {
-                        println!(
-                            "Ran into an issue while counting PRs for repository {}: {}",
-                            &repo.name, e
-                        );
-                    }
-                }
-            }
-        });
+        Ok(())
     }
 }
 

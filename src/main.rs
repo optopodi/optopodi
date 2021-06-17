@@ -80,7 +80,13 @@ async fn main() {
             let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
             let list_repos = ListReposForOrg::new(&org);
             let column_names = list_repos.column_names();
-            list_repos.spawn_producer_task(tx);
+            // list_repos.spawn_producer_task(tx);
+
+            tokio::spawn(async move {
+                if let Err(e) = list_repos.producer_task(tx).await {
+                    println!("{}", e);
+                };
+            });
 
             match gs {
                 // if user specified a google sheet ID, they must want to export data to that sheet
