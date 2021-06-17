@@ -63,70 +63,6 @@ impl Producer for ListReposForOrg {
     }
 }
 
-/// count the number of pull requests created in the last 30 days for the given repository within the given GitHub organization
-///
-/// # Arguments
-///
-/// - `octo` — The instance of `octocrab::Octocrab` that should be used to make queries to GitHub API
-/// - `org_name` — The name of the github organization that owns the specified repository
-/// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the `org_name` Github Organization
-///
-/// # Example
-///
-/// ```
-/// use github-metrics;
-/// use octocrab;
-/// use std::string::String;
-///
-/// let octocrab_instance = octocrab::Octocrab::builder().personal_token("SOME_GITHUB_TOKEN").build()?;
-///
-/// const num_pull_requests = github-metrics::count_pull_requests(octocrab_instance, "rust-lang", "rust");
-///
-/// println!("The 'rust-lang/rust' repo has had {} Pull Requests created in the last 30 days!", num_pull_requests);
-/// ```
-#[throws]
-async fn count_pull_requests(org_name: &String, repo_name: &str) -> usize {
-    let octo = octocrab::instance();
-    let mut page = octo
-        .pulls(org_name, repo_name)
-        .list()
-        // take all PRs -- open or closed
-        .state(octocrab::params::State::All)
-        // sort by date created
-        .sort(octocrab::params::pulls::Sort::Created)
-        // start with most recent
-        .direction(octocrab::params::Direction::Descending)
-        .per_page(255)
-        .send()
-        .await?;
-
-    let thirty_days_ago = Utc::now() - Duration::days(30);
-    let mut pr_count: usize = 0;
-
-    loop {
-        let in_last_thirty_days = page
-            .items
-            .iter()
-            // take while PRs have been created within the past thirty days
-            .take_while(|pr| pr.created_at > thirty_days_ago)
-            .count();
-
-        pr_count += in_last_thirty_days;
-        if in_last_thirty_days < page.items.len() {
-            // No need to visit the next page.
-            break;
-        }
-
-        if let Some(p) = octo.get_page(&page.next).await? {
-            page = p;
-        } else {
-            break;
-        }
-    }
-
-    pr_count
-}
-
 #[derive(Deserialize, Debug)]
 struct Response<T> {
     data: T,
@@ -144,11 +80,35 @@ struct IssueCount {
     issue_count: u32,
 }
 
+/// count the number of pull requests created in the last 30 days for the given repository within the given GitHub organization
+///
+/// # Arguments
+///
+/// - `org_name` — The name of the github organization that owns the specified repository
+/// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the `org_name` Github Organization
+///
+/// # Example
+///
+/// ```
+/// use github-metrics;
+/// use octocrab;
+/// use std::string::String;
+///
+/// let octocrab_instance = octocrab::Octocrab::builder().personal_token("SOME_GITHUB_TOKEN").build()?;
+///
+/// const num_pull_requests = github-metrics::count_pull_requests(octocrab_instance, "rust-lang", "rust");
+///
+/// println!("The 'rust-lang/rust' repo has had {} Pull Requests created in the last 30 days!", num_pull_requests);
+/// ```
 #[throws]
 async fn count_pull_requests_graphql(org_name: &str, repo_name: &str) -> usize {
     let octo = octocrab::instance();
-    let s = format!("{}", (Utc::now() - Duration::days(30)).date());
-    let mut chars = s.chars();
+
+    // the following madness simply removes the "UTC" at the end of the
+    // date string to match GitHub's Query
+    // i.e., "2021-05-18UTC" turns into "2021-05-18"
+    let date_string = format!("{}", (Utc::now() - Duration::days(30)).date());
+    let mut chars = date_string.chars();
     chars.next_back();
     chars.next_back();
     chars.next_back();
@@ -157,16 +117,16 @@ async fn count_pull_requests_graphql(org_name: &str, repo_name: &str) -> usize {
     let query_string = format!(
         r#"query {{
             search(
-                query:"repo:{org_name}/{repo_name} is:pr created:>{thirty_days_ago}", 
-                type:ISSUE, 
+                query:"repo:{org_name}/{repo_name} is:pr created:>{thirty_days_ago}",
+                type:ISSUE,
                 last:100,
             ) {{
                 issueCount
             }}
         }}"#,
-        org_name=org_name,
-        thirty_days_ago=thirty_days_ago_str,
-        repo_name=repo_name
+        org_name = org_name,
+        thirty_days_ago = thirty_days_ago_str,
+        repo_name = repo_name
     );
     let response: Response<Data> = octo.graphql(&query_string).await?;
 
