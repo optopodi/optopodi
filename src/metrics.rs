@@ -16,7 +16,11 @@ pub trait Producer {
 
 #[async_trait]
 pub trait Consumer {
-    async fn consume(self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>);
+    async fn consume(
+        self,
+        rx: &mut Receiver<Vec<String>>,
+        column_names: Vec<String>,
+    ) -> Result<(), String>;
 }
 
 pub struct ListReposForOrg {
@@ -88,36 +92,43 @@ impl ExportToSheets {
 
 #[async_trait]
 impl Consumer for ExportToSheets {
-    async fn consume(self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>) {
+    async fn consume(
+        self,
+        rx: &mut Receiver<Vec<String>>,
+        column_names: Vec<String>,
+    ) -> Result<(), String> {
         let sheets = match Sheets::initialize(&self.sheet_id).await {
             Ok(s) => s,
-            Err(e) => {
-                println!("There's been an error! {}", e);
-                return;
-            }
+            Err(e) => return Err(format!("There's been an error! {}", e)),
         };
 
         // clear existing data from sheet
         if let Err(e) = sheets.clear_sheet().await {
-            println!("There's been an error clearing the sheet: {}", e);
+            return Err(format!("There's been an error clearing the sheet: {}", e));
         }
 
         // add headers / column titles
         if let Err(e) = sheets.append(column_names).await {
-            println!("There's been an error appending the column names {}", e);
+            return Err(format!(
+                "There's been an error appending the column names {}",
+                e
+            ));
         }
 
         // wait for `tx` to send data
         while let Some(data) = rx.recv().await {
             let user_err_message = format!("Had trouble appending repo {}", &data[0]);
             if let Err(e) = sheets.append(data).await {
-                println!("{}: {}", user_err_message, e);
+                return Err(format!("{}: {}", user_err_message, e));
             }
         }
+
         println!(
-            "Finished exporting data to sheet: {}",
+            "Successfully uploaded data to Google Sheets: {}",
             sheets.get_link_to_sheet()
         );
+
+        Ok(())
     }
 }
 
@@ -125,14 +136,20 @@ pub struct Print;
 
 #[async_trait]
 impl Consumer for Print {
-    async fn consume(self, rx: &mut Receiver<Vec<String>>, column_names: Vec<String>) {
+    async fn consume(
+        self,
+        rx: &mut Receiver<Vec<String>>,
+        column_names: Vec<String>,
+    ) -> Result<(), String> {
         println!(
-            "{}\t{}\n------------------------",
+            "{}\t{}\n-----------------------------------",
             column_names[1], column_names[0]
         );
         while let Some(entry) = rx.recv().await {
             println!("{}\t\t{}", &entry[1], &entry[0]);
         }
+
+        Ok(())
     }
 }
 

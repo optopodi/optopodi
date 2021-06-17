@@ -87,13 +87,18 @@ async fn main() {
             match gs {
                 // if user specified a google sheet ID, they must want to export data to that sheet
                 Some(sheet_id) => {
-                    ExportToSheets::new(&sheet_id)
+                    if let Err(e) = ExportToSheets::new(&sheet_id)
                         .consume(&mut rx, column_names)
-                        .await;
+                        .await
+                    {
+                        println!("Error exporting to sheets: {}", e);
+                    }
                 }
                 // User wants to print to terminal, they did not specify a google sheet ID
                 None => {
-                    Print::consume(Print, &mut rx, column_names).await;
+                    if let Err(e) = Print::consume(Print, &mut rx, column_names).await {
+                        println!("Error while printing results: {}", e);
+                    }
                 }
             }
         }
