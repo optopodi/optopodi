@@ -2,6 +2,7 @@ use anyhow::Error;
 use clap::{AppSettings, Clap};
 use fehler::throws;
 use serde_derive::Deserialize;
+use std::convert::TryInto;
 use std::path::Path;
 use tokio::sync::mpsc;
 
@@ -18,8 +19,9 @@ struct Config {
 }
 
 #[derive(Debug, Deserialize, Default)]
-struct GithubConfig {
+pub struct GithubConfig {
     org: Option<String>,
+    number_of_days: Option<u64>,
 }
 
 impl Config {
@@ -59,7 +61,7 @@ enum Opt {
 #[tokio::main]
 async fn main() {
     let config_path = Path::new("metrics.toml");
-    let _config = if config_path.exists() {
+    let config = if config_path.exists() {
         Config::load(config_path)?
     } else {
         Config::default()
@@ -75,7 +77,18 @@ async fn main() {
             verbose: _,
         } => {
             let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
-            let list_repos = ListReposForOrg::new(&org);
+            let org_name = if let Some(org_name) = config.github.org {
+                org_name
+            } else {
+                org
+            };
+            let num_days: i64 = if let Some(number_of_days) = config.github.number_of_days {
+                number_of_days.try_into().unwrap()
+            } else {
+                30
+            };
+
+            let list_repos = ListReposForOrg::new(org_name, num_days);
             let column_names = list_repos.column_names();
 
             tokio::spawn(async move {

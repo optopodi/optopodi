@@ -2,20 +2,21 @@ use anyhow::Error;
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use fehler::throws;
-use octocrab::models::Repository;
 use serde::Deserialize;
 use tokio::sync::mpsc::Sender;
 
-use super::Producer;
+use super::{Producer, Response};
 
 pub struct ListReposForOrg {
     org_name: String,
+    number_of_days: i64,
 }
 
 impl ListReposForOrg {
-    pub fn new(org_name: &str) -> Self {
+    pub fn new(org_name: String, number_of_days: i64) -> Self {
         ListReposForOrg {
-            org_name: String::from(org_name),
+            org_name,
+            number_of_days,
         }
     }
 }
@@ -27,10 +28,7 @@ impl Producer for ListReposForOrg {
     }
 
     async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), String> {
-        let octo = octocrab::instance();
-        let gh_org = octo.orgs(&self.org_name);
-
-        let repos: Vec<Repository> = match super::all_repos(&gh_org).await {
+        let repos: Vec<String> = match super::all_repos_graphql(&self.org_name).await {
             Ok(r) => r,
             Err(e) => {
                 return Err(format!(
@@ -41,19 +39,22 @@ impl Producer for ListReposForOrg {
         };
 
         for repo in &repos {
-            match count_pull_requests_graphql(&self.org_name, &repo.name).await {
+            match count_pull_requests_graphql(
+                &self.org_name,
+                &repo,
+                Duration::days(self.number_of_days),
+            )
+            .await
+            {
                 Ok(count_prs) => {
-                    if let Err(e) = tx
-                        .send(vec![String::from(&repo.name), count_prs.to_string()])
-                        .await
-                    {
+                    if let Err(e) = tx.send(vec![repo.to_owned(), count_prs.to_string()]).await {
                         return Err(format!("{:#?}", e));
                     }
                 }
                 Err(e) => {
                     return Err(format!(
                         "Ran into an issue while counting PRs for repository {}: {}",
-                        &repo.name, e
+                        &repo, e
                     ));
                 }
             }
@@ -61,12 +62,6 @@ impl Producer for ListReposForOrg {
 
         Ok(())
     }
-}
-
-#[derive(Deserialize, Debug)]
-struct Response<T> {
-    data: T,
-    errors: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -80,38 +75,26 @@ struct IssueCount {
     issue_count: u32,
 }
 
-/// count the number of pull requests created in the last 30 days for the given repository within the given GitHub organization
+/// count the number of pull requests created in the given time period for the given repository within the given GitHub organization
 ///
 /// # Arguments
-///
 /// - `org_name` — The name of the github organization that owns the specified repository
 /// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the `org_name` Github Organization
-///
-/// # Example
-///
-/// ```
-/// use github-metrics;
-/// use octocrab;
-/// use std::string::String;
-///
-/// let octocrab_instance = octocrab::Octocrab::builder().personal_token("SOME_GITHUB_TOKEN").build()?;
-///
-/// const num_pull_requests = github-metrics::count_pull_requests(octocrab_instance, "rust-lang", "rust");
-///
-/// println!("The 'rust-lang/rust' repo has had {} Pull Requests created in the last 30 days!", num_pull_requests);
-/// ```
+/// - `time_period` — The relevant time period to search within
 #[throws]
-async fn count_pull_requests_graphql(org_name: &str, repo_name: &str) -> usize {
-    let octo = octocrab::instance();
-
+async fn count_pull_requests_graphql(
+    org_name: &str,
+    repo_name: &str,
+    time_period: Duration,
+) -> usize {
     // the following madness simply removes the "UTC" at the end of the
-    // date string to match GitHub's Query
+    // date string to match GitHub's PR query format for `created` field
     // i.e., "2021-05-18UTC" turns into "2021-05-18"
-    let date_string = format!("{}", (Utc::now() - Duration::days(30)).date());
+    let date_string = format!("{}", (Utc::now() - time_period).date());
     let mut chars = date_string.chars();
-    chars.next_back();
-    chars.next_back();
-    chars.next_back();
+    for _ in 0..3_u8 {
+        chars.next_back();
+    }
     let thirty_days_ago_str = chars.as_str();
 
     let query_string = format!(
@@ -128,6 +111,8 @@ async fn count_pull_requests_graphql(org_name: &str, repo_name: &str) -> usize {
         thirty_days_ago = thirty_days_ago_str,
         repo_name = repo_name
     );
+
+    let octo = octocrab::instance();
     let response: Response<Data> = octo.graphql(&query_string).await?;
 
     response.data.search.issue_count as usize
