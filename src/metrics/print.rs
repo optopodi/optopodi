@@ -12,7 +12,7 @@ impl Consumer for Print {
         column_names: Vec<String>,
     ) -> Result<(), String> {
         println!(
-            "#\t{}\t{}\n-----------------------------------",
+            "#\t{}\t{}\n------------------------------------------",
             column_names[1], column_names[0]
         );
         let mut count = 1;
