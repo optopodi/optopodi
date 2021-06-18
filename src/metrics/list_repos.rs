@@ -87,29 +87,30 @@ async fn count_pull_requests_graphql(
     repo_name: &str,
     time_period: Duration,
 ) -> usize {
-    // the following madness simply removes the "UTC" at the end of the
-    // date string to match GitHub's PR query format for `created` field
+    // get date string to match GitHub's PR query format for `created` field
     // i.e., "2021-05-18UTC" turns into "2021-05-18"
-    let date_string = format!("{}", (Utc::now() - time_period).date());
-    let mut chars = date_string.chars();
-    for _ in 0..3_u8 {
-        chars.next_back();
-    }
-    let thirty_days_ago_str = chars.as_str();
+    let date_str = chrono::NaiveDate::parse_from_str(
+        &format!("{}", (Utc::now() - time_period).date())[..],
+        "%FUTC",
+    )
+    .unwrap();
 
+    // the reason you'll see `last:1` in the query below is b/c we don't actually need to iterate through every single PR
+    // to get the count of PRs created in the last X days. The GQL `search` query returns a type with the relevant `count` irregardless.
+    // The reason this query is so much faster to count PRs is b/c it's just making the one request and not iterating through any data
     let query_string = format!(
         r#"query {{
             search(
-                query:"repo:{org_name}/{repo_name} is:pr created:>{thirty_days_ago}",
+                query:"repo:{org_name}/{repo_name} is:pr created:>{date_str}",
                 type:ISSUE,
-                last:100,
+                last:1,
             ) {{
                 issueCount
             }}
         }}"#,
         org_name = org_name,
-        thirty_days_ago = thirty_days_ago_str,
-        repo_name = repo_name
+        repo_name = repo_name,
+        date_str = date_str,
     );
 
     let octo = octocrab::instance();
