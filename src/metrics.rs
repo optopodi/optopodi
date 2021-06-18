@@ -120,12 +120,6 @@ async fn all_repos_graphql(org: &str) -> Vec<String> {
 ///
 /// [GitHub GraphQL Explorer]: https://docs.github.com/en/graphql/overview/explorer
 fn get_query_str_all_repos(org: &str, after_cursor: Option<&str>) -> String {
-    let after_clause = if let Some(cursor) = after_cursor {
-        format!(r#", after:"{}""#, cursor)
-    } else {
-        String::new()
-    };
-
     format!(
         r#"query {{
             organization(login:"{org_name}"){{
@@ -143,6 +137,10 @@ fn get_query_str_all_repos(org: &str, after_cursor: Option<&str>) -> String {
             }}
           }}"#,
         org_name = org,
-        after_clause = after_clause,
+        after_clause = if let Some(cursor) = after_cursor {
+            format!(r#", after:"{}""#, cursor)
+        } else {
+            "".to_string()
+        },
     )
 }
