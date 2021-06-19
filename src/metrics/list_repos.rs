@@ -2,10 +2,12 @@ use anyhow::Error;
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use fehler::throws;
+use graphql_client::*;
 use serde::Deserialize;
+
 use tokio::sync::mpsc::Sender;
 
-use super::{Producer, Response};
+use super::Producer;
 
 pub struct ListReposForOrg {
     org_name: String,
@@ -64,16 +66,13 @@ impl Producer for ListReposForOrg {
     }
 }
 
-#[derive(Deserialize, Debug)]
-struct Data {
-    search: IssueCount,
-}
-
-#[derive(Deserialize, Debug)]
-struct IssueCount {
-    #[serde(rename = "issueCount")]
-    issue_count: u32,
-}
+#[derive(graphql_client::GraphQLQuery)]
+#[graphql(
+    schema_path = "gql/schema.docs.graphql",
+    query_path = "gql/query_search.graphql",
+    response_derives = "Serialize,Debug"
+)]
+struct QuerySearch;
 
 /// count the number of pull requests created in the given time period for the given repository within the given GitHub organization
 ///
@@ -95,26 +94,21 @@ async fn count_pull_requests_graphql(
     )
     .unwrap();
 
-    // the reason you'll see `last:1` in the query below is b/c we don't actually need to iterate through every single PR
-    // to get the count of PRs created in the last X days. The GQL `search` query returns a type with the relevant `count` irregardless.
-    // The reason this query is so much faster to count PRs is b/c it's just making the one request and not iterating through any data
-    let query_string = format!(
-        r#"query {{
-            search(
-                query:"repo:{org_name}/{repo_name} is:pr created:>{date_str}",
-                type:ISSUE,
-                last:1,
-            ) {{
-                issueCount
-            }}
-        }}"#,
+    let query_string: String = format!(
+        r#"repo:{org_name}/{repo_name} is:pr created:>{date_str}"#,
         org_name = org_name,
         repo_name = repo_name,
         date_str = date_str,
     );
 
+    let q = QuerySearch::build_query(query_search::Variables {
+        query_string: query_string,
+    });
+    let q_body = serde_json::to_value(&q)?;
+    let q_pretty = serde_json::to_string_pretty(&q_body).unwrap();
     let octo = octocrab::instance();
-    let response: Response<Data> = octo.graphql(&query_string).await?;
-
-    response.data.search.issue_count as usize
+    let response: Response<query_search::ResponseData> = octo.graphql(&q_pretty).await?;
+    let response_data: query_search::ResponseData = response.data.expect("missing response data");
+    let count = response_data.search.issue_count;
+    count as usize
 }
