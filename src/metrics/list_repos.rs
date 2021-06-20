@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use fehler::throws;
 use graphql_client::*;
-use serde::Deserialize;
 
 use tokio::sync::mpsc::Sender;
 
@@ -74,6 +73,24 @@ impl Producer for ListReposForOrg {
 )]
 struct QuerySearch;
 
+#[async_trait]
+pub trait GQL {
+    async fn graphql_raw<R: octocrab::FromResponse>(
+        &self,
+        body: &(impl serde::Serialize + ?Sized),
+    ) -> octocrab::Result<R>;
+}
+
+#[async_trait]
+impl GQL for octocrab::Octocrab {
+    async fn graphql_raw<R: octocrab::FromResponse>(
+        &self,
+        body: &(impl serde::Serialize + ?Sized),
+    ) -> octocrab::Result<R> {
+        self.post("graphql", Some(&body)).await?
+    }
+}
+
 /// count the number of pull requests created in the given time period for the given repository within the given GitHub organization
 ///
 /// # Arguments
@@ -100,15 +117,13 @@ async fn count_pull_requests_graphql(
         repo_name = repo_name,
         date_str = date_str,
     );
-
     let q = QuerySearch::build_query(query_search::Variables {
         query_string: query_string,
     });
-    let q_body = serde_json::to_value(&q)?;
-    let q_pretty = serde_json::to_string_pretty(&q_body).unwrap();
     let octo = octocrab::instance();
-    let response: Response<query_search::ResponseData> = octo.post("graphql", Some(&q)).await?;
-    let response_data: query_search::ResponseData = response.data.expect("missing response data");
+    // let response: Response<query_search::ResponseData> = octo.post("graphql", Some(&q)).await?;
+    let response1: Response<query_search::ResponseData> = octo.graphql_raw(&q).await?;
+    let response_data: query_search::ResponseData = response1.data.expect("missing response data");
     let count = response_data.search.issue_count;
     count as usize
 }
