@@ -107,7 +107,7 @@ async fn count_pull_requests_graphql(
     let q_body = serde_json::to_value(&q)?;
     let q_pretty = serde_json::to_string_pretty(&q_body).unwrap();
     let octo = octocrab::instance();
-    let response: Response<query_search::ResponseData> = octo.graphql(&q_pretty).await?;
+    let response: Response<query_search::ResponseData> = octo.post("graphql", Some(&q)).await?;
     let response_data: query_search::ResponseData = response.data.expect("missing response data");
     let count = response_data.search.issue_count;
     count as usize
