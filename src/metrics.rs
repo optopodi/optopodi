@@ -45,54 +45,40 @@ pub struct OrgRepos;
 
 #[async_trait]
 pub trait GQL {
-    async fn graphql_with_params<R: octocrab::FromResponse + Send>(
-        &self,
-        body: &(impl serde::Serialize + Send + Sync),
-    ) -> octocrab::Result<R>;
-
-    async fn graphql_with_query<Q>(variables: Q::Variables) -> octocrab::Result<Q::ResponseData>
-    where
-        Q::Variables: Send + Sync,
-        Q: GraphQLQuery;
+    async fn execute<Q: GraphQLQuery + Send>(
+        self,
+    ) -> octocrab::Result<graphql_client::Response<Q::ResponseData>>;
 }
 
 #[async_trait]
-impl GQL for octocrab::Octocrab {
-    async fn graphql_with_params<R: octocrab::FromResponse + Send>(
-        &self,
-        body: &(impl serde::Serialize + Send + Sync),
-    ) -> octocrab::Result<R> {
-        Ok(self.post("graphql", Some(&body)).await?)
-    }
-
-    async fn graphql_with_query<Q>(variables: Q::Variables) -> octocrab::Result<Q::ResponseData>
-    where
-        Q::Variables: Send + Sync,
-        Q: GraphQLQuery,
-    {
+impl<V: serde::Serialize + Send> GQL for graphql_client::QueryBody<V>
+where
+    V: Sync,
+    graphql_client::QueryBody<V>: Send,
+{
+    async fn execute<Q: GraphQLQuery + Send>(
+        self,
+    ) -> octocrab::Result<graphql_client::Response<Q::ResponseData>> {
         let octo = octocrab::instance();
-        let q = Q::build_query(variables);
-        Ok(octo.post("graphql", Some(&q)).await?)
+        Ok(octo.post("graphql", Some(&self)).await?)
     }
 }
 
 #[throws]
 async fn all_repos_graphql(org: &str) -> Vec<String> {
     let org_name = format!("{}", org);
-    let octo = octocrab::instance();
-
     let mut repos: Vec<String> = vec![];
     let mut after_cursor = None;
 
     loop {
-        let q = OrgRepos::build_query(org_repos::Variables {
+        let res = OrgRepos::build_query(org_repos::Variables {
             org_name: org_name.to_owned(),
             after_cursor,
-        });
+        })
+        .execute::<OrgRepos>()
+        .await?;
 
-        let response: graphql_client::Response<org_repos::ResponseData> =
-            octo.graphql_with_params(&q).await?;
-        let response_data: org_repos::ResponseData = response.data.expect("missing response data");
+        let response_data: org_repos::ResponseData = res.data.expect("missing response data");
         let repos_data = if let Some(org_data) = response_data.organization {
             org_data.repositories
         } else {

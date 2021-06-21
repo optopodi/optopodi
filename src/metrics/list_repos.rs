@@ -85,18 +85,18 @@ async fn count_pull_requests_graphql(
     )
     .unwrap();
 
-    let query_string: String = format!(
+    let query_string = format!(
         r#"repo:{org_name}/{repo_name} is:pr created:>{date_str}"#,
         org_name = org_name,
         repo_name = repo_name,
         date_str = date_str,
     );
-    let q = QuerySearch::build_query(query_search::Variables {
+    let response = QuerySearch::build_query(query_search::Variables {
         query_string: query_string,
-    });
-    let octo = octocrab::instance();
-    let response: Response<query_search::ResponseData> = octo.graphql_with_params(&q).await?;
-    let response_data: query_search::ResponseData = response.data.expect("missing response data");
+    })
+    .execute::<QuerySearch>()
+    .await?;
+    let response_data = response.data.expect("missing response data");
     let count = response_data.search.issue_count;
     count as usize
 }
