@@ -2,8 +2,7 @@ use anyhow::Error;
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use fehler::throws;
-use graphql_client::*;
-
+use graphql_client::GraphQLQuery;
 use tokio::sync::mpsc::Sender;
 
 use super::{query_search, Producer, QuerySearch, GQL};
@@ -91,11 +90,10 @@ async fn count_pull_requests_graphql(
         repo_name = repo_name,
         date_str = date_str,
     );
-    let response = QuerySearch::build_query(query_search::Variables {
-        query_string: query_string,
-    })
-    .execute::<QuerySearch>()
-    .await?;
+
+    let response = QuerySearch::build_query(query_search::Variables { query_string })
+        .execute::<QuerySearch>()
+        .await?;
     let response_data = response.data.expect("missing response data");
     let count = response_data.search.issue_count;
     count as usize

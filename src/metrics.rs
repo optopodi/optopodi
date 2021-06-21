@@ -1,7 +1,8 @@
 use anyhow::Error;
 use async_trait::async_trait;
 use fehler::throws;
-use graphql_client::GraphQLQuery;
+use graphql_client::{GraphQLQuery, QueryBody, Response};
+use serde::Serialize;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 mod export_to_sheets;
@@ -45,22 +46,17 @@ pub struct OrgRepos;
 
 #[async_trait]
 pub trait GQL {
-    async fn execute<Q: GraphQLQuery + Send>(
-        self,
-    ) -> octocrab::Result<graphql_client::Response<Q::ResponseData>>;
+    async fn execute<Q: GraphQLQuery + Send>(self) -> octocrab::Result<Response<Q::ResponseData>>;
 }
 
 #[async_trait]
-impl<V: serde::Serialize + Send> GQL for graphql_client::QueryBody<V>
+impl<V> GQL for QueryBody<V>
 where
-    V: Sync,
-    graphql_client::QueryBody<V>: Send,
+    V: Serialize + Send + Sync,
+    QueryBody<V>: Send,
 {
-    async fn execute<Q: GraphQLQuery + Send>(
-        self,
-    ) -> octocrab::Result<graphql_client::Response<Q::ResponseData>> {
-        let octo = octocrab::instance();
-        Ok(octo.post("graphql", Some(&self)).await?)
+    async fn execute<Q: GraphQLQuery + Send>(self) -> octocrab::Result<Response<Q::ResponseData>> {
+        Ok(octocrab::instance().post("graphql", Some(&self)).await?)
     }
 }
 
