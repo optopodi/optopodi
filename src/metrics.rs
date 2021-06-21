@@ -49,6 +49,11 @@ pub trait GQL {
         &self,
         body: &(impl serde::Serialize + Send + Sync),
     ) -> octocrab::Result<R>;
+
+    async fn graphql_with_query<Q>(variables: Q::Variables) -> octocrab::Result<Q::ResponseData>
+    where
+        Q::Variables: Send + Sync,
+        Q: GraphQLQuery;
 }
 
 #[async_trait]
@@ -58,6 +63,16 @@ impl GQL for octocrab::Octocrab {
         body: &(impl serde::Serialize + Send + Sync),
     ) -> octocrab::Result<R> {
         Ok(self.post("graphql", Some(&body)).await?)
+    }
+
+    async fn graphql_with_query<Q>(variables: Q::Variables) -> octocrab::Result<Q::ResponseData>
+    where
+        Q::Variables: Send + Sync,
+        Q: GraphQLQuery,
+    {
+        let octo = octocrab::instance();
+        let q = Q::build_query(variables);
+        Ok(octo.post("graphql", Some(&q)).await?)
     }
 }
 
