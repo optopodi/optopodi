@@ -53,7 +53,6 @@ pub trait GQL {
 impl<V> GQL for QueryBody<V>
 where
     V: Serialize + Send + Sync,
-    QueryBody<V>: Send,
 {
     async fn execute<Q: GraphQLQuery + Send>(self) -> octocrab::Result<Response<Q::ResponseData>> {
         Ok(octocrab::instance().post("graphql", Some(&self)).await?)
