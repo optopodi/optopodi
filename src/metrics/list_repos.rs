@@ -75,7 +75,7 @@ struct QuerySearch;
 
 #[async_trait]
 pub trait GQL {
-    async fn graphql_raw<R: octocrab::FromResponse + Send>(
+    async fn graphql_with_params<R: octocrab::FromResponse + Send>(
         &self,
         body: &(impl serde::Serialize + Send + Sync),
     ) -> octocrab::Result<R>;
@@ -83,7 +83,7 @@ pub trait GQL {
 
 #[async_trait]
 impl GQL for octocrab::Octocrab {
-    async fn graphql_raw<R: octocrab::FromResponse + Send>(
+    async fn graphql_with_params<R: octocrab::FromResponse + Send>(
         &self,
         body: &(impl serde::Serialize + Send + Sync),
     ) -> octocrab::Result<R> {
@@ -121,9 +121,8 @@ async fn count_pull_requests_graphql(
         query_string: query_string,
     });
     let octo = octocrab::instance();
-    // let response: Response<query_search::ResponseData> = octo.post("graphql", Some(&q)).await?;
-    let response1: Response<query_search::ResponseData> = octo.graphql_raw(&q).await?;
-    let response_data: query_search::ResponseData = response1.data.expect("missing response data");
+    let response: Response<query_search::ResponseData> = octo.graphql_with_params(&q).await?;
+    let response_data: query_search::ResponseData = response.data.expect("missing response data");
     let count = response_data.search.issue_count;
     count as usize
 }
