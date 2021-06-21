@@ -73,7 +73,7 @@ async fn all_repos_graphql(org: &str) -> Vec<String> {
         .execute::<OrgRepos>()
         .await?;
 
-        let response_data: org_repos::ResponseData = res.data.expect("missing response data");
+        let response_data = res.data.expect("missing response data");
         let repos_data = if let Some(org_data) = response_data.organization {
             org_data.repositories
         } else {
