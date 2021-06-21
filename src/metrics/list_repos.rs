@@ -6,7 +6,7 @@ use graphql_client::*;
 
 use tokio::sync::mpsc::Sender;
 
-use super::Producer;
+use super::{query_search, Producer, QuerySearch, GQL};
 
 pub struct ListReposForOrg {
     org_name: String,
@@ -62,32 +62,6 @@ impl Producer for ListReposForOrg {
         }
 
         Ok(())
-    }
-}
-
-#[derive(graphql_client::GraphQLQuery)]
-#[graphql(
-    schema_path = "gql/schema.docs.graphql",
-    query_path = "gql/query_search.graphql",
-    response_derives = "Serialize,Debug"
-)]
-struct QuerySearch;
-
-#[async_trait]
-pub trait GQL {
-    async fn graphql_with_params<R: octocrab::FromResponse + Send>(
-        &self,
-        body: &(impl serde::Serialize + Send + Sync),
-    ) -> octocrab::Result<R>;
-}
-
-#[async_trait]
-impl GQL for octocrab::Octocrab {
-    async fn graphql_with_params<R: octocrab::FromResponse + Send>(
-        &self,
-        body: &(impl serde::Serialize + Send + Sync),
-    ) -> octocrab::Result<R> {
-        Ok(self.post("graphql", Some(&body)).await?)
     }
 }
 

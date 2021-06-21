@@ -1,0 +1,15 @@
+query OrgRepos($org_name: String!, $after_cursor: String) {
+    organization(login:$org_name){
+        repositories(first:100, after: $after_cursor){
+            edges {
+                node {
+                    name
+                }
+            }
+            pageInfo {
+                hasNextPage
+                endCursor
+            }
+        }
+    }
+}
