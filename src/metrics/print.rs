@@ -11,16 +11,13 @@ impl Consumer for Print {
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
     ) -> Result<(), String> {
-        println!(
-            "#\t{}\t{}\n------------------------------------------",
-            column_names[1], column_names[0]
-        );
+        println!("#,{}", column_names.join(","));
         let mut count = 1;
+
         while let Some(entry) = rx.recv().await {
-            println!("{}\t{}\t\t{}", count, &entry[1], &entry[0]);
+            println!("{},{}", count, entry.join(","));
             count += 1;
         }
-
         Ok(())
     }
 }
