@@ -75,19 +75,19 @@ struct QuerySearch;
 
 #[async_trait]
 pub trait GQL {
-    async fn graphql_raw<R: octocrab::FromResponse>(
+    async fn graphql_raw<R: octocrab::FromResponse + Send>(
         &self,
-        body: &(impl serde::Serialize + ?Sized),
+        body: &(impl serde::Serialize + Send + Sync),
     ) -> octocrab::Result<R>;
 }
 
 #[async_trait]
 impl GQL for octocrab::Octocrab {
-    async fn graphql_raw<R: octocrab::FromResponse>(
+    async fn graphql_raw<R: octocrab::FromResponse + Send>(
         &self,
-        body: &(impl serde::Serialize + ?Sized),
+        body: &(impl serde::Serialize + Send + Sync),
     ) -> octocrab::Result<R> {
-        self.post("graphql", Some(&body)).await?
+        Ok(self.post("graphql", Some(&body)).await?)
     }
 }
 
