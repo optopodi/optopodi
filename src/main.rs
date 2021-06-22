@@ -86,23 +86,19 @@ async fn main() {
     // initialize static octocrab API -- call `octocrab::instance()` anywhere to retrieve instance
     octocrab::initialise(octocrab::Octocrab::builder().personal_token(token))?;
 
-    println!("{:#?}", OctoCli::parse());
-
     let cli = OctoCli::parse();
 
-    let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
-
-    let org_name = match (cli.org, config.github.org) {
+    let org_name: String = match (cli.org, config.github.org) {
         (Some(org_name), _) | (None, Some(org_name)) => org_name,
         (None, None) => panic!("no org name given"),
     };
 
-    let num_days = match config.github.number_of_days {
+    let num_days: i64 = match config.github.number_of_days {
         Some(n) => n.try_into().unwrap(),
         None => 30,
     };
 
-    let repo = match (cli.repo, config.github.repo) {
+    let repo: Option<String> = match (cli.repo, config.github.repo) {
         (Some(repo_name), _) | (None, Some(repo_name)) => Some(repo_name),
         (None, None) => None,
     };
@@ -112,35 +108,39 @@ async fn main() {
         (None, None) => None,
     };
 
-    let column_names: Vec<String>;
+    let mut column_names: Option<Vec<String>> = None;
+    let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
 
-    match cli.cmd.unwrap() {
-        Cmd::List => {
-            let list_repos = ListReposForOrg::new(org_name, num_days);
-            column_names = list_repos.column_names();
+    if let Some(cmd) = cli.cmd {
+        match cmd {
+            Cmd::List => {
+                let list_repos = ListReposForOrg::new(org_name, num_days);
+                column_names = Some(list_repos.column_names());
+                println!("{:#?}", &list_repos);
 
-            tokio::spawn(async move {
-                if let Err(e) = list_repos.producer_task(tx).await {
-                    println!("Encountered an error while collecting data: {}", e);
-                };
-            });
-        }
-        Cmd::RepoParticipants => {
-            let repo_participants = RepoParticipants::new(org_name, repo, 30);
-            column_names = repo_participants.column_names();
+                tokio::spawn(async move {
+                    if let Err(e) = list_repos.producer_task(tx).await {
+                        println!("Encountered an error while collecting data: {:#?}", e);
+                    };
+                });
+            }
+            Cmd::RepoParticipants => {
+                let repo_participants = RepoParticipants::new(org_name, repo, 30);
+                column_names = Some(repo_participants.column_names());
 
-            tokio::spawn(async move {
-                if let Err(e) = repo_participants.producer_task(tx).await {
-                    println!("Encountered an error while collecting data: {}", e);
-                };
-            });
+                tokio::spawn(async move {
+                    if let Err(e) = repo_participants.producer_task(tx).await {
+                        println!("Encountered an error while collecting data: {}", e);
+                    };
+                });
+            }
         }
     }
 
     // if user specified a google sheet ID, they must want to export data to that sheet
     if let Some(sheet_id) = sheet_id {
         if let Err(e) = ExportToSheets::new(&sheet_id)
-            .consume(&mut rx, column_names.clone())
+            .consume(&mut rx, column_names.clone().unwrap())
             .await
         {
             println!("Error exporting to sheets: {}", e);
@@ -148,7 +148,7 @@ async fn main() {
     }
     // if user specified the print flag, they must want to print to terminal
     if cli.print {
-        if let Err(e) = Print::consume(Print, &mut rx, column_names).await {
+        if let Err(e) = Print::consume(Print, &mut rx, column_names.unwrap()).await {
             println!("Error while printing results: {}", e);
         }
     }
