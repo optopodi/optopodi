@@ -11,7 +11,7 @@ mod print;
 #[async_trait]
 pub trait Producer {
     fn column_names(&self) -> Vec<String>;
-    async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), String>;
+    async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), anyhow::Error>;
 }
 
 #[async_trait]
