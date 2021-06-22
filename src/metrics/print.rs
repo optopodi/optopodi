@@ -1,10 +1,10 @@
-use super::Consumer;
-use async_trait::async_trait;
-use std::io;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
+
+use async_trait::async_trait;
 use tokio::sync::mpsc::Receiver;
-use tokio::task::JoinHandle;
+
+use super::Consumer;
 
 pub struct Print<T: 'static + Write + Send> {
     csv_writer: Arc<Mutex<csv::Writer<T>>>,
@@ -18,7 +18,7 @@ impl<T: 'static + Write + Send> Print<T> {
     }
 
     async fn write_record_not_blocking(&self, record: Vec<String>) -> Result<(), String> {
-        let mut csv_writer_clone = self.csv_writer.clone();
+        let csv_writer_clone = self.csv_writer.clone();
 
         tokio::task::spawn_blocking(move || {
             csv_writer_clone
@@ -49,7 +49,7 @@ impl<T: 'static + Write + Send> Print<T> {
                 .and_then(|mut writer| {
                     writer
                         .flush()
-                        .map_err(|error| format!("Failed to flush data"))
+                        .map_err(|error| format!("Failed to flush data with error: {}",error))
                 })
         })
         .await
@@ -65,7 +65,7 @@ impl<T: 'static + Write + Send> Print<T> {
 #[async_trait]
 impl<T: Write + Send> Consumer for Print<T> {
     async fn consume(
-        &self,
+        self,
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
     ) -> Result<(), String> {
