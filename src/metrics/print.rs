@@ -49,7 +49,7 @@ impl<T: 'static + Write + Send> Print<T> {
                 .and_then(|mut writer| {
                     writer
                         .flush()
-                        .map_err(|error| format!("Failed to flush data with error: {}",error))
+                        .map_err(|error| format!("Failed to flush data with error: {}", error))
                 })
         })
         .await

@@ -13,7 +13,6 @@ mod token;
 use metrics::{Consumer, ExportToSheets, ListReposForOrg, Print, Producer, RepoParticipants};
 use std::io;
 
-
 #[derive(Debug, Deserialize, Default)]
 struct Config {
     github: GithubConfig,
