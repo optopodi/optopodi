@@ -7,6 +7,7 @@ use tokio::sync::mpsc::{Receiver, Sender};
 mod export_to_sheets;
 mod list_repos;
 mod print;
+mod repo_participants;
 
 #[async_trait]
 pub trait Producer {
@@ -26,6 +27,7 @@ pub trait Consumer {
 pub use export_to_sheets::ExportToSheets;
 pub use list_repos::ListReposForOrg;
 pub use print::Print;
+pub use repo_participants::RepoParticipants;
 
 #[derive(GraphQLQuery)]
 #[graphql(
