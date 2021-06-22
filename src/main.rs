@@ -64,7 +64,7 @@ enum Opt {
 
         /// name of GitHub organization to analyze
         #[clap(short, long)]
-        repo: String,
+        repo: Option<String>,
 
         /// Verbose mode (-v, -vv, -vvv, etc.)
         #[clap(short, long, parse(from_occurrences))]

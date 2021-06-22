@@ -11,12 +11,12 @@ use super::{Producer, GQL};
 
 pub struct RepoParticipants {
     org_name: String,
-    repo_name: String,
+    repo_name: Option<String>,
     number_of_days: i64,
 }
 
 impl RepoParticipants {
-    pub fn new(org_name: String, repo_name: String, number_of_days: i64) -> Self {
+    pub fn new(org_name: String, repo_name: Option<String>, number_of_days: i64) -> Self {
         Self {
             org_name,
             repo_name,
@@ -28,29 +28,59 @@ impl RepoParticipants {
 #[async_trait]
 impl Producer for RepoParticipants {
     fn column_names(&self) -> Vec<String> {
-        vec![String::from("Participant"), String::from("PRs")]
+        vec![
+            String::from("Participant"),
+            String::from("Repository"),
+            String::from("PRs participated in"),
+            String::from("PRs authored"),
+            String::from("PRs reviewed or resolved"),
+        ]
     }
 
     async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), anyhow::Error> {
-        let data = pr_participants(
-            &self.org_name,
-            &self.repo_name,
-            Duration::days(self.number_of_days),
-        )
-        .await?;
+        // If no repository is given, repeat for all repositories.
+        let repo_names = match &self.repo_name {
+            Some(n) => vec![n.to_string()],
+            None => super::all_repos_graphql(&self.org_name).await?,
+        };
 
-        for participant in data {
-            tx.send(vec![participant.login, participant.prs.to_string()])
+        for repo_name in repo_names {
+            let data = pr_participants(
+                &self.org_name,
+                &repo_name,
+                Duration::days(self.number_of_days),
+            )
+            .await?;
+
+            for (
+                login,
+                ParticipantCounts {
+                    participated_in,
+                    authored,
+                    reviewed_or_resolved,
+                },
+            ) in data
+            {
+                tx.send(vec![
+                    login,
+                    repo_name.clone(),
+                    participated_in.to_string(),
+                    authored.to_string(),
+                    reviewed_or_resolved.to_string(),
+                ])
                 .await?;
+            }
         }
 
         Ok(())
     }
 }
 
-struct Participant {
-    login: String,
-    prs: u64,
+#[derive(Default)]
+struct ParticipantCounts {
+    participated_in: u64,
+    authored: u64,
+    reviewed_or_resolved: u64,
 }
 
 #[derive(GraphQLQuery)]
@@ -73,7 +103,7 @@ async fn pr_participants(
     org_name: &str,
     repo_name: &str,
     time_period: Duration,
-) -> Vec<Participant> {
+) -> Vec<(String, ParticipantCounts)> {
     // get date string to match GitHub's PR query format for `created` field
     // i.e., "2021-05-18UTC" turns into "2021-05-18"
     let date_str = chrono::NaiveDate::parse_from_str(
@@ -90,13 +120,7 @@ async fn pr_participants(
     );
 
     // Tracks, for each github login, how many PRs they participated in on this repository.
-    let mut participated = HashMap::new();
-
-    // Tracks, for each github login, how many PRs they authored on this repository.
-    let mut authored: HashMap<String, u64> = HashMap::new();
-
-    // Tracks, for each github login, how many PRs they reviewed or merged on this repository.
-    let mut reviewed_or_merged: HashMap<String, u64> = HashMap::new();
+    let mut counts: HashMap<String, ParticipantCounts> = HashMap::new();
 
     let response = PrsAndParticipants::execute(pap::Variables {
         query_string,
@@ -110,8 +134,6 @@ async fn pr_participants(
             Some(pap::PrsAndParticipantsSearchEdgesNode::PullRequest(pr)) => pr,
             _ => continue,
         };
-
-        eprintln!("{:#?}", pr);
 
         // For each person who participated on this PR, increment their
         // entry in the `participated` map.
@@ -130,7 +152,7 @@ async fn pr_participants(
             .inspect(|_| participants_found += 1)
         {
             let login = participant.login;
-            *participated.entry(login).or_insert(0) += 1;
+            counts.entry(login).or_default().participated_in += 1;
         }
 
         // FIXME: We should eventually support the case that there are more than
@@ -146,7 +168,7 @@ async fn pr_participants(
         let reviews = pr.reviews.unwrap();
         let mut reviews_found = 0;
 
-        let reviewers: HashSet<String> = reviews
+        let reviewers: HashSet<_> = reviews
             .nodes
             .into_iter()
             .flatten()
@@ -161,7 +183,7 @@ async fn pr_participants(
             })
             .collect();
         for reviewer in reviewers {
-            *reviewed_or_merged.entry(reviewer).or_insert(0) += 1;
+            counts.entry(reviewer).or_default().reviewed_or_resolved += 1;
         }
 
         if reviews_found != reviews.total_count {
@@ -171,24 +193,19 @@ async fn pr_participants(
         // Count the number of PRs which a person has authored.
         if let Some(a) = pr.author {
             if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestAuthorOn::User(u) = a.on {
-                *authored.entry(u.login).or_insert(0) += 1;
+                counts.entry(u.login).or_default().authored += 1;
             }
         }
 
         // Count the number of PRs which a person has merged.
         if let Some(a) = pr.merged_by {
             if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestMergedByOn::User(u) = a.on {
-                *reviewed_or_merged.entry(u.login).or_insert(0) += 1;
+                counts.entry(u.login).or_default().reviewed_or_resolved += 1;
             }
         }
     }
 
-    let mut counts = vec![];
-    for (login, prs) in participated {
-        counts.push(Participant { login, prs });
-    }
-
-    counts.sort_by_key(|p| u64::MAX - p.prs);
-
+    let mut counts: Vec<_> = counts.into_iter().collect();
+    counts.sort_by_key(|(_, p)| u64::MAX - p.participated_in);
     counts
 }
