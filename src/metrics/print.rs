@@ -39,7 +39,7 @@ impl<T: 'static + Write + Send> Print<T> {
         })?
     }
 
-    async fn flush_not_blocking(&self) -> Result<(), String>  {
+    async fn flush_not_blocking(&self) -> Result<(), String> {
         let csv_writer_clone = self.csv_writer.clone();
 
         tokio::task::spawn_blocking(move || {
@@ -47,19 +47,18 @@ impl<T: 'static + Write + Send> Print<T> {
                 .lock()
                 .map_err(|error| format!("Failed to acquire lock with error: {}", error))
                 .and_then(|mut writer| {
-                    writer.flush().map_err(|error| {
-                        format!("Failed to flush data")
-                    })
+                    writer
+                        .flush()
+                        .map_err(|error| format!("Failed to flush data"))
                 })
         })
-            .await
-            .map_err(|error| {
-                format!(
-                    "Failed to execute spawn blocking code with error: {}",
-                    error
-                )
-            })?
-
+        .await
+        .map_err(|error| {
+            format!(
+                "Failed to execute spawn blocking code with error: {}",
+                error
+            )
+        })?
     }
 }
 
@@ -92,6 +91,5 @@ impl<T: Write + Send> Consumer for Print<T> {
         }
 
         self.flush_not_blocking().await
-
     }
 }
