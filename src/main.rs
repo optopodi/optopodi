@@ -9,7 +9,6 @@ use tokio::sync::mpsc;
 mod google_sheets;
 mod metrics;
 mod token;
-mod util;
 
 use metrics::{Consumer, ExportToSheets, ListReposForOrg, Print, Producer};
 
