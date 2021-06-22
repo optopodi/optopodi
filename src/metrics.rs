@@ -1,8 +1,7 @@
 use anyhow::Error;
 use async_trait::async_trait;
 use fehler::throws;
-use graphql_client::{GraphQLQuery, QueryBody, Response};
-use serde::Serialize;
+use graphql_client::{GraphQLQuery, Response};
 use tokio::sync::mpsc::{Receiver, Sender};
 
 mod export_to_sheets;
@@ -45,17 +44,19 @@ pub struct QuerySearch;
 pub struct OrgRepos;
 
 #[async_trait]
-pub trait GQL {
-    async fn execute<Q: GraphQLQuery + Send>(self) -> octocrab::Result<Response<Q::ResponseData>>;
+pub trait GQL: GraphQLQuery {
+    async fn execute(variables: Self::Variables) -> octocrab::Result<Response<Self::ResponseData>>;
 }
 
 #[async_trait]
-impl<V> GQL for QueryBody<V>
+impl<Q> GQL for Q
 where
-    V: Serialize + Send + Sync,
+    Q: GraphQLQuery,
+    Q::Variables: Send + Sync,
 {
-    async fn execute<Q: GraphQLQuery + Send>(self) -> octocrab::Result<Response<Q::ResponseData>> {
-        Ok(octocrab::instance().post("graphql", Some(&self)).await?)
+    async fn execute(variables: Self::Variables) -> octocrab::Result<Response<Self::ResponseData>> {
+        let body = Self::build_query(variables);
+        Ok(octocrab::instance().post("graphql", Some(&body)).await?)
     }
 }
 
@@ -66,11 +67,10 @@ async fn all_repos_graphql(org: &str) -> Vec<String> {
     let mut after_cursor = None;
 
     loop {
-        let res = OrgRepos::build_query(org_repos::Variables {
+        let res = OrgRepos::execute(org_repos::Variables {
             org_name: org_name.to_owned(),
             after_cursor,
         })
-        .execute::<OrgRepos>()
         .await?;
 
         let response_data = res.data.expect("missing response data");
