@@ -96,16 +96,19 @@ impl<T: Write + Send> Consumer for Print<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::metrics::{Consumer, Print, Producer};
-    use async_trait::async_trait;
     use std::sync::Arc;
+
+    use async_trait::async_trait;
     use tokio::sync::mpsc;
     use tokio::sync::mpsc::Sender;
+
+    use crate::metrics::{Consumer, Print, Producer};
 
     struct TestProducer {
         column_names: Vec<String>,
         data_to_send: Vec<String>,
     }
+
     impl TestProducer {
         fn new(column_names: Vec<String>, data_to_send: Vec<String>) -> Self {
             Self {
