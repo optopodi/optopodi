@@ -15,12 +15,14 @@ use metrics::{Consumer, ExportToSheets, ListReposForOrg, Print, Producer, RepoPa
 #[derive(Debug, Deserialize, Default)]
 struct Config {
     github: GithubConfig,
+    google_sheet: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Default)]
 pub struct GithubConfig {
     org: Option<String>,
     number_of_days: Option<u64>,
+    repo: Option<String>,
 }
 
 impl Config {
@@ -36,40 +38,39 @@ impl Config {
     }
 }
 
-#[derive(Clap, Debug)]
+#[derive(Clap, Debug, PartialEq)]
 #[clap(setting = AppSettings::ColoredHelp)]
 #[clap(name = "gh-metrics")]
-enum Opt {
-    /// list all repositories in the given organization and the number of
-    /// Pull Requests created in the last 30 days
-    List {
-        /// name of GitHub organization to analyze
-        #[clap(short, long)]
-        org: String,
+struct OctoCli {
+    /// name of GitHub organization to analyze
+    #[clap(short, long)]
+    org: Option<String>,
 
-        /// Verbose mode (-v, -vv, -vvv, etc.)
-        #[clap(short, long, parse(from_occurrences))]
-        verbose: u8,
+    /// Export Option: Print to terminal
+    #[clap(short, long)]
+    print: bool,
 
-        #[clap(short, long)]
-        google_sheet: Option<String>,
-    },
+    /// Export Option: Export to Google Sheets
+    /// args: the ID of the google-sheet to export to
+    #[clap(short, long)]
+    google_sheet: Option<String>,
 
-    /// list all repositories in the given organization and the number of
-    /// Pull Requests created in the last 30 days
-    RepoParticipants {
-        /// name of GitHub organization to analyze
-        #[clap(short, long)]
-        org: String,
+    /// name of GitHub repository to analyze
+    #[clap(short, long)]
+    repo: Option<String>,
 
-        /// name of GitHub organization to analyze
-        #[clap(short, long)]
-        repo: Option<String>,
+    /// the sub-command to run
+    #[clap(subcommand)]
+    cmd: Option<Cmd>,
+}
 
-        /// Verbose mode (-v, -vv, -vvv, etc.)
-        #[clap(short, long, parse(from_occurrences))]
-        verbose: u8,
-    },
+#[derive(Clap, Debug, PartialEq)]
+enum Cmd {
+    /// list all repositories in the given organization and the number of Pull Requests created in the last 30 days
+    List,
+
+    /// list all contributors and their contribution details for the given organization/repository in teh last 30 days
+    RepoParticipants,
 }
 
 #[throws]
@@ -85,70 +86,70 @@ async fn main() {
     // initialize static octocrab API -- call `octocrab::instance()` anywhere to retrieve instance
     octocrab::initialise(octocrab::Octocrab::builder().personal_token(token))?;
 
-    match Opt::parse() {
-        Opt::List {
-            org,
-            google_sheet: gs,
-            verbose: _,
-        } => {
-            let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
-            let org_name = if let Some(org_name) = config.github.org {
-                org_name
-            } else {
-                org
-            };
-            let num_days: i64 = if let Some(number_of_days) = config.github.number_of_days {
-                number_of_days.try_into().unwrap()
-            } else {
-                30
-            };
+    println!("{:#?}", OctoCli::parse());
 
+    let cli = OctoCli::parse();
+
+    let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
+
+    let org_name = match (cli.org, config.github.org) {
+        (Some(org_name), _) | (None, Some(org_name)) => org_name,
+        (None, None) => panic!("no org name given"),
+    };
+
+    let num_days = match config.github.number_of_days {
+        Some(n) => n.try_into().unwrap(),
+        None => 30,
+    };
+
+    let repo = match (cli.repo, config.github.repo) {
+        (Some(repo_name), _) | (None, Some(repo_name)) => Some(repo_name),
+        (None, None) => None,
+    };
+
+    let sheet_id: Option<String> = match (cli.google_sheet, config.google_sheet) {
+        (Some(s_id), _) | (None, Some(s_id)) => Some(String::from(s_id)),
+        (None, None) => None,
+    };
+
+    let column_names: Vec<String>;
+
+    match cli.cmd.unwrap() {
+        Cmd::List => {
             let list_repos = ListReposForOrg::new(org_name, num_days);
-            let column_names = list_repos.column_names();
+            column_names = list_repos.column_names();
 
             tokio::spawn(async move {
                 if let Err(e) = list_repos.producer_task(tx).await {
                     println!("Encountered an error while collecting data: {}", e);
                 };
             });
-
-            match gs {
-                // if user specified a google sheet ID, they must want to export data to that sheet
-                Some(sheet_id) => {
-                    if let Err(e) = ExportToSheets::new(&sheet_id)
-                        .consume(&mut rx, column_names)
-                        .await
-                    {
-                        println!("Error exporting to sheets: {}", e);
-                    }
-                }
-                // User wants to print to terminal, they did not specify a google sheet ID
-                None => {
-                    if let Err(e) = Print::consume(Print, &mut rx, column_names).await {
-                        println!("Error while printing results: {}", e);
-                    }
-                }
-            }
         }
-
-        Opt::RepoParticipants {
-            org,
-            repo,
-            verbose: _,
-        } => {
-            let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
-            let repo_participants = RepoParticipants::new(org, repo, 30);
-            let column_names = repo_participants.column_names();
+        Cmd::RepoParticipants => {
+            let repo_participants = RepoParticipants::new(org_name, repo, 30);
+            column_names = repo_participants.column_names();
 
             tokio::spawn(async move {
                 if let Err(e) = repo_participants.producer_task(tx).await {
                     println!("Encountered an error while collecting data: {}", e);
                 };
             });
+        }
+    }
 
-            if let Err(e) = Print::consume(Print, &mut rx, column_names).await {
-                println!("Error while printing results: {}", e);
-            }
+    // if user specified a google sheet ID, they must want to export data to that sheet
+    if let Some(sheet_id) = sheet_id {
+        if let Err(e) = ExportToSheets::new(&sheet_id)
+            .consume(&mut rx, column_names.clone())
+            .await
+        {
+            println!("Error exporting to sheets: {}", e);
+        }
+    }
+    // if user specified the print flag, they must want to print to terminal
+    if cli.print {
+        if let Err(e) = Print::consume(Print, &mut rx, column_names).await {
+            println!("Error while printing results: {}", e);
         }
     }
 }
