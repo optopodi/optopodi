@@ -1,5 +1,9 @@
 query PrsAndParticipants($query_string: String!, $after_cursor: String) {
   search(query: $query_string, type: ISSUE, last: 100, after: $after_cursor) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
     edges {
       node {
         __typename
@@ -38,8 +42,6 @@ query PrsAndParticipants($query_string: String!, $after_cursor: String) {
           }
         }
       }
-
-      cursor
     }
   }
 }

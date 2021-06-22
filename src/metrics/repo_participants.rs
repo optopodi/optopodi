@@ -112,96 +112,106 @@ async fn pr_participants(
     )
     .unwrap();
 
-    let query_string = format!(
-        r#"repo:{org_name}/{repo_name} is:pr created:>{date_str}"#,
-        org_name = org_name,
-        repo_name = repo_name,
-        date_str = date_str,
-    );
-
     // Tracks, for each github login, how many PRs they participated in on this repository.
     let mut counts: HashMap<String, ParticipantCounts> = HashMap::new();
 
-    let response = PrsAndParticipants::execute(pap::Variables {
-        query_string,
-        after_cursor: None,
-    })
-    .await?;
-    let response_data = response.data.expect("missing response data");
-    for pr_edge in response_data.search.edges.into_iter().flatten().flatten() {
-        let _cursor = pr_edge.cursor;
-        let pr = match pr_edge.node {
-            Some(pap::PrsAndParticipantsSearchEdgesNode::PullRequest(pr)) => pr,
-            _ => continue,
-        };
+    let mut after_cursor = None;
 
-        // For each person who participated on this PR, increment their
-        // entry in the `participated` map.
-        //
-        // Assumption: a given individual will not appear more than once
-        // in this list.
-        let mut participants_found = 0;
-        for participant in pr
-            .participants
-            .edges
-            .into_iter()
-            .flatten()
-            .flatten()
-            .map(|p| p.node)
-            .flatten()
-            .inspect(|_| participants_found += 1)
-        {
-            let login = participant.login;
-            counts.entry(login).or_default().participated_in += 1;
-        }
+    loop {
+        let response = PrsAndParticipants::execute(pap::Variables {
+            query_string: format!(
+                r#"repo:{org_name}/{repo_name} is:pr created:>{date_str}"#,
+                org_name = org_name,
+                repo_name = repo_name,
+                date_str = date_str,
+            ),
+            after_cursor,
+        })
+        .await?;
+        let response_data = response.data.expect("missing response data");
+        for pr_edge in response_data.search.edges.into_iter().flatten().flatten() {
+            let pr = match pr_edge.node {
+                Some(pap::PrsAndParticipantsSearchEdgesNode::PullRequest(pr)) => pr,
+                _ => continue,
+            };
 
-        // FIXME: We should eventually support the case that there are more than
-        // 100 participants, but for now, just assert that we don't need to deal
-        // with pagination. The way I would expect to handle this is to have a separate
-        // query in which we identify a PR by its internal ID and walk our way through
-        // the list of participants.
-        if participants_found != pr.participants.total_count {
-            anyhow::bail!("FIXME: pagination support for participants list");
-        }
+            // For each person who participated on this PR, increment their
+            // entry in the `participated` map.
+            //
+            // Assumption: a given individual will not appear more than once
+            // in this list.
+            let mut participants_found = 0;
+            for participant in pr
+                .participants
+                .edges
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|p| p.node)
+                .flatten()
+                .inspect(|_| participants_found += 1)
+            {
+                let login = participant.login;
+                counts.entry(login).or_default().participated_in += 1;
+            }
 
-        // Count the number of PRs on which a person has issued a review.
-        let reviews = pr.reviews.unwrap();
-        let mut reviews_found = 0;
+            // FIXME: We should eventually support the case that there are more than
+            // 100 participants, but for now, just assert that we don't need to deal
+            // with pagination. The way I would expect to handle this is to have a separate
+            // query in which we identify a PR by its internal ID and walk our way through
+            // the list of participants.
+            if participants_found != pr.participants.total_count {
+                anyhow::bail!("FIXME: pagination support for participants list");
+            }
 
-        let reviewers: HashSet<_> = reviews
-            .nodes
-            .into_iter()
-            .flatten()
-            .inspect(|_| reviews_found += 1)
-            .flatten()
-            .flat_map(|n| n.author)
-            .flat_map(|a| match a.on {
-                pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestReviewsNodesAuthorOn::User(
-                    u,
-                ) => Some(u.login),
-                _ => None,
-            })
-            .collect();
-        for reviewer in reviewers {
-            counts.entry(reviewer).or_default().reviewed_or_resolved += 1;
-        }
+            // Count the number of PRs on which a person has issued a review.
+            let reviews = pr.reviews.unwrap();
+            let mut reviews_found = 0;
 
-        if reviews_found != reviews.total_count {
-            anyhow::bail!("FIXME: pagination support for participants list");
-        }
+            let reviewers: HashSet<_> = reviews
+                .nodes
+                .into_iter()
+                .flatten()
+                .inspect(|_| reviews_found += 1)
+                .flatten()
+                .flat_map(|n| n.author)
+                .flat_map(|a| {
+                    match a.on {
+                    pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestReviewsNodesAuthorOn::User(
+                        u,
+                    ) => Some(u.login),
+                    _ => None,
+                }
+                })
+                .collect();
+            for reviewer in reviewers {
+                counts.entry(reviewer).or_default().reviewed_or_resolved += 1;
+            }
 
-        // Count the number of PRs which a person has authored.
-        if let Some(a) = pr.author {
-            if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestAuthorOn::User(u) = a.on {
-                counts.entry(u.login).or_default().authored += 1;
+            if reviews_found != reviews.total_count {
+                anyhow::bail!("FIXME: pagination support for participants list");
+            }
+
+            // Count the number of PRs which a person has authored.
+            if let Some(a) = pr.author {
+                if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestAuthorOn::User(u) = a.on {
+                    counts.entry(u.login).or_default().authored += 1;
+                }
+            }
+
+            // Count the number of PRs which a person has merged.
+            if let Some(a) = pr.merged_by {
+                if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestMergedByOn::User(u) = a.on
+                {
+                    counts.entry(u.login).or_default().reviewed_or_resolved += 1;
+                }
             }
         }
 
-        // Count the number of PRs which a person has merged.
-        if let Some(a) = pr.merged_by {
-            if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestMergedByOn::User(u) = a.on {
-                counts.entry(u.login).or_default().reviewed_or_resolved += 1;
-            }
+        if response_data.search.page_info.has_next_page {
+            after_cursor = response_data.search.page_info.end_cursor;
+        } else {
+            break;
         }
     }
 
