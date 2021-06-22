@@ -11,10 +11,25 @@ query PrsAndParticipants($query_string: String!, $after_cursor: String) {
               login
             }
           }
-          reviews {
+          mergedBy {
+            __typename
+            ... on User {
+              login
+            }
+          }
+          reviews(first: 100) {
             totalCount
+            nodes {
+              author {
+                __typename
+                ... on User {
+                  login
+                }
+              }
+            }
           }
           participants(first: 100) {
+            totalCount
             edges {
               node {
                 login
