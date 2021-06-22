@@ -56,7 +56,7 @@ where
 {
     async fn execute(variables: Self::Variables) -> octocrab::Result<Response<Self::ResponseData>> {
         let body = Self::build_query(variables);
-        Ok(octocrab::instance().post("graphql", Some(&body)).await?)
+        octocrab::instance().post("graphql", Some(&body)).await
     }
 }
 
