@@ -19,7 +19,7 @@ impl ExportToSheets {
 #[async_trait]
 impl Consumer for ExportToSheets {
     async fn consume(
-        self,
+        &self,
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
     ) -> Result<(), String> {
