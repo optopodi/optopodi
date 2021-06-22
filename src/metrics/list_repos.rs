@@ -26,37 +26,18 @@ impl Producer for ListReposForOrg {
         vec![String::from("Repository Name"), String::from("# of PRs")]
     }
 
-    async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), String> {
-        let repos: Vec<String> = match super::all_repos_graphql(&self.org_name).await {
-            Ok(r) => r,
-            Err(e) => {
-                return Err(format!(
-                    "Ran into an error while gathering repositories! {}",
-                    e
-                ));
-            }
-        };
+    async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), anyhow::Error> {
+        let repos: Vec<String> = super::all_repos_graphql(&self.org_name).await?;
 
         for repo in &repos {
-            match count_pull_requests_graphql(
+            let count_prs = count_pull_requests_graphql(
                 &self.org_name,
                 &repo,
                 Duration::days(self.number_of_days),
             )
-            .await
-            {
-                Ok(count_prs) => {
-                    if let Err(e) = tx.send(vec![repo.to_owned(), count_prs.to_string()]).await {
-                        return Err(format!("{:#?}", e));
-                    }
-                }
-                Err(e) => {
-                    return Err(format!(
-                        "Ran into an issue while counting PRs for repository {}: {}",
-                        &repo, e
-                    ));
-                }
-            }
+            .await?;
+            tx.send(vec![repo.to_owned(), count_prs.to_string()])
+                .await?;
         }
 
         Ok(())

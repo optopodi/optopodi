@@ -9,9 +9,8 @@ use tokio::sync::mpsc;
 mod google_sheets;
 mod metrics;
 mod token;
-mod util;
 
-use metrics::{Consumer, ExportToSheets, ListReposForOrg, Print, Producer};
+use metrics::{Consumer, ExportToSheets, ListReposForOrg, Print, Producer, RepoParticipants};
 
 #[derive(Debug, Deserialize, Default)]
 struct Config {
@@ -54,6 +53,22 @@ enum Opt {
 
         #[clap(short, long)]
         google_sheet: Option<String>,
+    },
+
+    /// list all repositories in the given organization and the number of
+    /// Pull Requests created in the last 30 days
+    RepoParticipants {
+        /// name of GitHub organization to analyze
+        #[clap(short, long)]
+        org: String,
+
+        /// name of GitHub organization to analyze
+        #[clap(short, long)]
+        repo: Option<String>,
+
+        /// Verbose mode (-v, -vv, -vvv, etc.)
+        #[clap(short, long, parse(from_occurrences))]
+        verbose: u8,
     },
 }
 
@@ -113,6 +128,26 @@ async fn main() {
                         println!("Error while printing results: {}", e);
                     }
                 }
+            }
+        }
+
+        Opt::RepoParticipants {
+            org,
+            repo,
+            verbose: _,
+        } => {
+            let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
+            let repo_participants = RepoParticipants::new(org, repo, 30);
+            let column_names = repo_participants.column_names();
+
+            tokio::spawn(async move {
+                if let Err(e) = repo_participants.producer_task(tx).await {
+                    println!("Encountered an error while collecting data: {}", e);
+                };
+            });
+
+            if let Err(e) = Print::consume(Print, &mut rx, column_names).await {
+                println!("Error while printing results: {}", e);
             }
         }
     }

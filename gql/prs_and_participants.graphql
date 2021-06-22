@@ -1,0 +1,47 @@
+query PrsAndParticipants($query_string: String!, $after_cursor: String) {
+  search(query: $query_string, type: ISSUE, last: 100, after: $after_cursor) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        __typename
+        ... on PullRequest {
+          number
+          author {
+            __typename
+            ... on User {
+              login
+            }
+          }
+          mergedBy {
+            __typename
+            ... on User {
+              login
+            }
+          }
+          reviews(first: 100) {
+            totalCount
+            nodes {
+              author {
+                __typename
+                ... on User {
+                  login
+                }
+              }
+            }
+          }
+          participants(first: 100) {
+            totalCount
+            edges {
+              node {
+                login
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
