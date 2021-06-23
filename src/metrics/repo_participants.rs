@@ -146,6 +146,7 @@ async fn pr_participants(
                     author = Some(u.login);
                 }
             }
+            let is_author = |s: &str| author.iter().any(|a| a == s);
 
             // For each person who participated on this PR, increment their
             // entry in the `participated` map.
@@ -164,7 +165,9 @@ async fn pr_participants(
                 .inspect(|_| participants_found += 1)
             {
                 let login = participant.login;
-                counts.entry(login).or_default().participated_in += 1;
+                if !is_author(&login) {
+                    counts.entry(login).or_default().participated_in += 1;
+                }
             }
 
             // FIXME: We should eventually support the case that there are more than
@@ -198,13 +201,9 @@ async fn pr_participants(
                 .collect();
             for reviewer in reviewers {
                 // you don't count as a reviewer if you review your own PR
-                if let Some(author) = &author {
-                    if reviewer == *author {
-                        continue;
-                    }
+                if !is_author(&reviewer) {
+                    counts.entry(reviewer).or_default().reviewed += 1;
                 }
-
-                counts.entry(reviewer).or_default().reviewed += 1;
             }
 
             if reviews_found != reviews.total_count {
