@@ -61,6 +61,8 @@ impl Producer for RepoParticipants {
             )
             .await?;
 
+            // FIXME -- there must be some way to "autoderive" this from
+            // the `ParticipantCounts` data structure, maybe with serde?
             for (
                 login,
                 ParticipantCounts {
@@ -244,6 +246,6 @@ async fn pr_participants(
     }
 
     let mut counts: Vec<_> = counts.into_iter().collect();
-    counts.sort_by_key(|(_, p)| u64::MAX - p.participated_in);
+    counts.sort_by_key(|(login, p)| (u64::MAX - p.participated_in, login.clone()));
     counts
 }
