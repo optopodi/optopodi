@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use chrono::Duration;
 use tokio::sync::mpsc::Sender;
 
-use super::{all_repos, Graphql, Producer};
+use super::{util, Graphql, Producer};
 
 #[derive(Debug)]
 pub struct ListReposForOrg {
@@ -28,10 +28,10 @@ impl Producer for ListReposForOrg {
     }
 
     async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), anyhow::Error> {
-        let repos: Vec<String> = all_repos::all_repos(&self.graphql, &self.org_name).await?;
+        let repos: Vec<String> = util::all_repos(&self.graphql, &self.org_name).await?;
 
         for repo in &repos {
-            let count_prs = all_repos::count_pull_requests(
+            let count_prs = util::count_pull_requests(
                 &self.graphql,
                 &self.org_name,
                 &repo,

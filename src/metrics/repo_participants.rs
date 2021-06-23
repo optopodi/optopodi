@@ -7,7 +7,7 @@ use fehler::throws;
 use graphql_client::GraphQLQuery;
 use tokio::sync::mpsc::Sender;
 
-use super::{all_repos, Graphql, Producer};
+use super::{util, Graphql, Producer};
 
 pub struct RepoParticipants {
     graphql: Graphql,
@@ -49,7 +49,7 @@ impl Producer for RepoParticipants {
         // If no repository is given, repeat for all repositories.
         let repo_names = match &self.repo_name {
             Some(n) => vec![n.to_string()],
-            None => all_repos::all_repos(&self.graphql, &self.org_name).await?,
+            None => util::all_repos(&self.graphql, &self.org_name).await?,
         };
 
         for repo_name in repo_names {
