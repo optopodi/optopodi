@@ -23,7 +23,6 @@ pub trait Consumer {
     ) -> Result<(), String>;
 }
 
-pub use all_repos::all_repos_graphql;
 pub use export_to_sheets::ExportToSheets;
 pub use gql::Graphql;
 pub use list_repos::ListReposForOrg;
