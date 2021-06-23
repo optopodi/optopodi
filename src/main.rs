@@ -62,6 +62,15 @@ struct OctoCli {
     /// the sub-command to run
     #[clap(subcommand)]
     cmd: Option<Cmd>,
+
+    /// Prefix to use for exporting the results of graphql queries
+    #[clap(short, long)]
+    export_graphql: Option<String>,
+
+    /// Prefix to use for importing the results of graphql queries
+    /// rather than hitting github again (useful when debugging).
+    #[clap(short, long)]
+    import_graphql: Option<String>,
 }
 
 #[derive(Clap, Debug, PartialEq)]
@@ -76,6 +85,8 @@ enum Cmd {
 #[throws]
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let config_path = Path::new("metrics.toml");
     let config = if config_path.exists() {
         Config::load(config_path)?
@@ -111,7 +122,7 @@ async fn main() {
     let mut column_names: Option<Vec<String>> = None;
     let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
 
-    let graphql = metrics::Graphql::default();
+    let graphql = metrics::Graphql::new(&cli.export_graphql, &cli.import_graphql);
 
     if let Some(cmd) = cli.cmd {
         match cmd {
