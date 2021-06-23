@@ -33,7 +33,8 @@ impl Producer for RepoParticipants {
             String::from("Repository"),
             String::from("PRs participated in"),
             String::from("PRs authored"),
-            String::from("PRs reviewed or resolved"),
+            String::from("PRs reviewed"),
+            String::from("PRs resolved"),
         ]
     }
 
@@ -57,7 +58,8 @@ impl Producer for RepoParticipants {
                 ParticipantCounts {
                     participated_in,
                     authored,
-                    reviewed_or_resolved,
+                    reviewed,
+                    resolved,
                 },
             ) in data
             {
@@ -66,7 +68,8 @@ impl Producer for RepoParticipants {
                     repo_name.clone(),
                     participated_in.to_string(),
                     authored.to_string(),
-                    reviewed_or_resolved.to_string(),
+                    reviewed.to_string(),
+                    resolved.to_string(),
                 ])
                 .await?;
             }
@@ -80,7 +83,8 @@ impl Producer for RepoParticipants {
 struct ParticipantCounts {
     participated_in: u64,
     authored: u64,
-    reviewed_or_resolved: u64,
+    reviewed: u64,
+    resolved: u64,
 }
 
 #[derive(GraphQLQuery)]
@@ -135,6 +139,14 @@ async fn pr_participants(
                 _ => continue,
             };
 
+            // Extract PR author
+            let mut author = None;
+            if let Some(a) = pr.author {
+                if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestAuthorOn::User(u) = a.on {
+                    author = Some(u.login);
+                }
+            }
+
             // For each person who participated on this PR, increment their
             // entry in the `participated` map.
             //
@@ -185,7 +197,14 @@ async fn pr_participants(
                 })
                 .collect();
             for reviewer in reviewers {
-                counts.entry(reviewer).or_default().reviewed_or_resolved += 1;
+                // you don't count as a reviewer if you review your own PR
+                if let Some(author) = &author {
+                    if reviewer == *author {
+                        continue;
+                    }
+                }
+
+                counts.entry(reviewer).or_default().reviewed += 1;
             }
 
             if reviews_found != reviews.total_count {
@@ -193,17 +212,15 @@ async fn pr_participants(
             }
 
             // Count the number of PRs which a person has authored.
-            if let Some(a) = pr.author {
-                if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestAuthorOn::User(u) = a.on {
-                    counts.entry(u.login).or_default().authored += 1;
-                }
+            if let Some(a) = author {
+                counts.entry(a).or_default().authored += 1;
             }
 
             // Count the number of PRs which a person has merged.
             if let Some(a) = pr.merged_by {
                 if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestMergedByOn::User(u) = a.on
                 {
-                    counts.entry(u.login).or_default().reviewed_or_resolved += 1;
+                    counts.entry(u.login).or_default().resolved += 1;
                 }
             }
         }
