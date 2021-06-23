@@ -76,8 +76,8 @@ where
 
             if let Some(export_prefix) = &self.config.export_prefix {
                 let path = format!("{}.{}.json", export_prefix, count);
-                let reponse_json = serde_json::to_string(&response)?;
-                tokio::fs::write(&path, reponse_json.as_bytes()).await?;
+                let response_json = serde_json::to_string(&response)?;
+                tokio::fs::write(&path, response_json.as_bytes()).await?;
             }
 
             response
