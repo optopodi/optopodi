@@ -129,7 +129,6 @@ async fn main() {
             Cmd::List => {
                 let list_repos = ListReposForOrg::new(graphql, org_name, num_days);
                 column_names = Some(list_repos.column_names());
-                println!("{:#?}", &list_repos);
 
                 tokio::spawn(async move {
                     if let Err(e) = list_repos.producer_task(tx).await {
