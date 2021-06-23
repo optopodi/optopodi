@@ -111,10 +111,12 @@ async fn main() {
     let mut column_names: Option<Vec<String>> = None;
     let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
 
+    let graphql = metrics::Graphql::default();
+
     if let Some(cmd) = cli.cmd {
         match cmd {
             Cmd::List => {
-                let list_repos = ListReposForOrg::new(org_name, num_days);
+                let list_repos = ListReposForOrg::new(graphql, org_name, num_days);
                 column_names = Some(list_repos.column_names());
                 println!("{:#?}", &list_repos);
 
@@ -125,7 +127,7 @@ async fn main() {
                 });
             }
             Cmd::RepoParticipants => {
-                let repo_participants = RepoParticipants::new(org_name, repo, 30);
+                let repo_participants = RepoParticipants::new(graphql, org_name, repo, 30);
                 column_names = Some(repo_participants.column_names());
 
                 tokio::spawn(async move {

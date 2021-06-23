@@ -7,17 +7,24 @@ use fehler::throws;
 use graphql_client::GraphQLQuery;
 use tokio::sync::mpsc::Sender;
 
-use super::{Producer, GQL};
+use super::{Graphql, Producer};
 
 pub struct RepoParticipants {
+    graphql: Graphql,
     org_name: String,
     repo_name: Option<String>,
     number_of_days: i64,
 }
 
 impl RepoParticipants {
-    pub fn new(org_name: String, repo_name: Option<String>, number_of_days: i64) -> Self {
+    pub fn new(
+        graphql: Graphql,
+        org_name: String,
+        repo_name: Option<String>,
+        number_of_days: i64,
+    ) -> Self {
         Self {
+            graphql,
             org_name,
             repo_name,
             number_of_days,
@@ -42,11 +49,12 @@ impl Producer for RepoParticipants {
         // If no repository is given, repeat for all repositories.
         let repo_names = match &self.repo_name {
             Some(n) => vec![n.to_string()],
-            None => super::all_repos_graphql(&self.org_name).await?,
+            None => super::all_repos_graphql(&self.graphql, &self.org_name).await?,
         };
 
         for repo_name in repo_names {
             let data = pr_participants(
+                &self.graphql,
                 &self.org_name,
                 &repo_name,
                 Duration::days(self.number_of_days),
@@ -104,6 +112,7 @@ use prs_and_participants as pap;
 /// - `time_period` — The relevant time period to search within
 #[throws]
 async fn pr_participants(
+    graphql: &Graphql,
     org_name: &str,
     repo_name: &str,
     time_period: Duration,
@@ -122,16 +131,18 @@ async fn pr_participants(
     let mut after_cursor = None;
 
     loop {
-        let response = PrsAndParticipants::execute(pap::Variables {
-            query_string: format!(
-                r#"repo:{org_name}/{repo_name} is:pr created:>{date_str}"#,
-                org_name = org_name,
-                repo_name = repo_name,
-                date_str = date_str,
-            ),
-            after_cursor,
-        })
-        .await?;
+        let response = graphql
+            .query(PrsAndParticipants)
+            .execute(pap::Variables {
+                query_string: format!(
+                    r#"repo:{org_name}/{repo_name} is:pr created:>{date_str}"#,
+                    org_name = org_name,
+                    repo_name = repo_name,
+                    date_str = date_str,
+                ),
+                after_cursor,
+            })
+            .await?;
         let response_data = response.data.expect("missing response data");
         for pr_edge in response_data.search.edges.into_iter().flatten().flatten() {
             let pr = match pr_edge.node {

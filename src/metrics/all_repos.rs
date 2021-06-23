@@ -1,4 +1,4 @@
-use super::GQL;
+use super::Graphql;
 use anyhow::Error;
 use fehler::throws;
 use graphql_client::GraphQLQuery;
@@ -12,17 +12,19 @@ use graphql_client::GraphQLQuery;
 struct OrgRepos;
 
 #[throws]
-pub async fn all_repos_graphql(org: &str) -> Vec<String> {
+pub async fn all_repos_graphql(graphql: &Graphql, org: &str) -> Vec<String> {
     let org_name = format!("{}", org);
     let mut repos: Vec<String> = vec![];
     let mut after_cursor = None;
 
     loop {
-        let res = OrgRepos::execute(org_repos::Variables {
-            org_name: org_name.to_owned(),
-            after_cursor,
-        })
-        .await?;
+        let res = graphql
+            .query(OrgRepos)
+            .execute(org_repos::Variables {
+                org_name: org_name.to_owned(),
+                after_cursor,
+            })
+            .await?;
 
         let response_data = res.data.expect("missing response data");
         let repos_data = if let Some(org_data) = response_data.organization {

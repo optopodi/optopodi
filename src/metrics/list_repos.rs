@@ -5,17 +5,19 @@ use fehler::throws;
 use graphql_client::GraphQLQuery;
 use tokio::sync::mpsc::Sender;
 
-use super::{Producer, GQL};
+use super::{Graphql, Producer};
 
 #[derive(Debug)]
 pub struct ListReposForOrg {
+    graphql: Graphql,
     org_name: String,
     number_of_days: i64,
 }
 
 impl ListReposForOrg {
-    pub fn new(org_name: String, number_of_days: i64) -> Self {
+    pub fn new(graphql: Graphql, org_name: String, number_of_days: i64) -> Self {
         ListReposForOrg {
+            graphql,
             org_name,
             number_of_days,
         }
@@ -29,10 +31,11 @@ impl Producer for ListReposForOrg {
     }
 
     async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), anyhow::Error> {
-        let repos: Vec<String> = super::all_repos_graphql(&self.org_name).await?;
+        let repos: Vec<String> = super::all_repos_graphql(&self.graphql, &self.org_name).await?;
 
         for repo in &repos {
             let count_prs = count_pull_requests_graphql(
+                &self.graphql,
                 &self.org_name,
                 &repo,
                 Duration::days(self.number_of_days),
@@ -62,6 +65,7 @@ struct QuerySearch;
 /// - `time_period` — The relevant time period to search within
 #[throws]
 async fn count_pull_requests_graphql(
+    graphql: &Graphql,
     org_name: &str,
     repo_name: &str,
     time_period: Duration,
@@ -79,7 +83,10 @@ async fn count_pull_requests_graphql(
         org_name, repo_name, date_str,
     );
 
-    let response = QuerySearch::execute(query_search::Variables { query_string }).await?;
+    let response = graphql
+        .query(QuerySearch)
+        .execute(query_search::Variables { query_string })
+        .await?;
     let response_data = response.data.expect("missing response data");
     let count = response_data.search.issue_count;
     count as usize
