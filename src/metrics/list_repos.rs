@@ -2,9 +2,10 @@ use anyhow::Error;
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use fehler::throws;
+use graphql_client::GraphQLQuery;
 use tokio::sync::mpsc::Sender;
 
-use super::{query_search, Producer, QuerySearch, GQL};
+use super::{Producer, GQL};
 
 #[derive(Debug)]
 pub struct ListReposForOrg {
@@ -44,6 +45,14 @@ impl Producer for ListReposForOrg {
         Ok(())
     }
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "gql/schema.docs.graphql",
+    query_path = "gql/query_search.graphql",
+    response_derives = "Serialize,Debug"
+)]
+struct QuerySearch;
 
 /// count the number of pull requests created in the given time period for the given repository within the given GitHub organization
 ///
