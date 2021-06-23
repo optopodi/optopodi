@@ -6,6 +6,7 @@ use tokio::sync::mpsc::Sender;
 
 use super::{query_search, Producer, QuerySearch, GQL};
 
+#[derive(Debug)]
 pub struct ListReposForOrg {
     org_name: String,
     number_of_days: i64,
@@ -65,10 +66,8 @@ async fn count_pull_requests_graphql(
     .unwrap();
 
     let query_string = format!(
-        r#"repo:{org_name}/{repo_name} is:pr created:>{date_str}"#,
-        org_name = org_name,
-        repo_name = repo_name,
-        date_str = date_str,
+        r#"repo:{}/{} is:pr created:>{}"#,
+        org_name, repo_name, date_str,
     );
 
     let response = QuerySearch::execute(query_search::Variables { query_string }).await?;
