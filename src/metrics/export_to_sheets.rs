@@ -1,8 +1,10 @@
+use anyhow::Context;
 use async_trait::async_trait;
 use tokio::sync::mpsc::Receiver;
 
-use super::Consumer;
 use crate::google_sheets::Sheets;
+
+use super::Consumer;
 
 pub struct ExportToSheets {
     sheet_id: String,
@@ -22,31 +24,27 @@ impl Consumer for ExportToSheets {
         self,
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
-    ) -> Result<(), String> {
-        let sheets = match Sheets::initialize(&self.sheet_id).await {
-            Ok(s) => s,
-            Err(e) => return Err(format!("There's been an error! {}", e)),
-        };
+    ) -> Result<(), anyhow::Error> {
+        let sheets = Sheets::initialize(&self.sheet_id).await?;
 
         // clear existing data from sheet
-        if let Err(e) = sheets.clear_sheet().await {
-            return Err(format!("There's been an error clearing the sheet: {}", e));
-        }
+        sheets
+            .clear_sheet()
+            .await
+            .context("Failed to clear the sheet")?;
 
         // add headers / column titles
-        if let Err(e) = sheets.append(column_names).await {
-            return Err(format!(
-                "There's been an error appending the column names {}",
-                e
-            ));
-        }
+        sheets
+            .append(column_names)
+            .await
+            .context("Failed to append the column names")?;
 
         // wait for `tx` to send data
-        while let Some(data) = rx.recv().await {
-            let user_err_message = format!("Had trouble appending repo {}", &data[0]);
-            if let Err(e) = sheets.append(data).await {
-                return Err(format!("{}: {}", user_err_message, e));
-            }
+        while let Some(entry) = rx.recv().await {
+            sheets
+                .append(entry)
+                .await
+                .context(format!("Failed to append entry"))?;
         }
 
         println!(

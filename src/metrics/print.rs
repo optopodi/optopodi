@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use anyhow::Context;
 use async_trait::async_trait;
 use tokio::sync::mpsc::Receiver;
 
@@ -23,7 +24,7 @@ impl<T: Write + Send> Consumer for Print<T> {
         mut self,
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
-    ) -> Result<(), String> {
+    ) -> Result<(), anyhow::Error> {
         self.csv_writer = write_record_not_blocking(
             self.csv_writer,
             vec!["#".to_string()]
@@ -31,7 +32,8 @@ impl<T: Write + Send> Consumer for Print<T> {
                 .chain(column_names.into_iter())
                 .collect(),
         )
-        .await?;
+        .await
+        .context(format!("Failed to output columns names"))?;
 
         let mut row_index: usize = 1;
 
@@ -43,7 +45,8 @@ impl<T: Write + Send> Consumer for Print<T> {
                     .chain(entry.into_iter())
                     .collect(),
             )
-            .await?;
+            .await
+            .context(format!("Failed to output {}-th entry", row_index))?;
             row_index += 1;
         }
 
@@ -56,40 +59,26 @@ impl<T: Write + Send> Consumer for Print<T> {
 async fn write_record_not_blocking<T>(
     mut csv_writer: csv::Writer<T>,
     record: Vec<String>,
-) -> Result<csv::Writer<T>, String>
+) -> Result<csv::Writer<T>, anyhow::Error>
 where
     T: 'static + Write + Send,
 {
     tokio::task::spawn_blocking(move || {
-        csv_writer.write_record(&record).map_err(|error| {
-            format!("Failed to write record: {:?} with error: {}", record, error)
-        })?;
+        csv_writer.write_record(&record)?;
         Ok(csv_writer)
     })
-    .await
-    .map_err(|error| {
-        format!(
-            "Failed to execute spawn blocking code with error: {}",
-            error
-        )
-    })?
+    .await?
 }
 
-async fn flush_not_blocking<T>(mut csv_writer: csv::Writer<T>) -> Result<csv::Writer<T>, String>
+async fn flush_not_blocking<T>(
+    mut csv_writer: csv::Writer<T>,
+) -> Result<csv::Writer<T>, anyhow::Error>
 where
     T: 'static + Write + Send,
 {
     tokio::task::spawn_blocking(move || {
-        csv_writer
-            .flush()
-            .map_err(|error| format!("Failed to flush data with error: {}", error))?;
+        csv_writer.flush()?;
         Ok(csv_writer)
     })
-    .await
-    .map_err(|error| {
-        format!(
-            "Failed to execute spawn blocking code with error: {}",
-            error
-        )
-    })?
+    .await?
 }

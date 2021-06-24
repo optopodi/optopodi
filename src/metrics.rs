@@ -20,7 +20,7 @@ pub trait Consumer {
         self,
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
-    ) -> Result<(), String>;
+    ) -> Result<(), anyhow::Error>;
 }
 
 pub use export_to_sheets::ExportToSheets;
