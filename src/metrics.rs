@@ -17,7 +17,7 @@ pub trait Producer {
 #[async_trait]
 pub trait Consumer {
     async fn consume(
-        &self,
+        self,
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
     ) -> Result<(), String>;
