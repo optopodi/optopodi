@@ -70,9 +70,7 @@ where
     .await?
 }
 
-async fn flush_not_blocking<T>(
-    mut csv_writer: csv::Writer<T>,
-) -> anyhow::Result<csv::Writer<T>>
+async fn flush_not_blocking<T>(mut csv_writer: csv::Writer<T>) -> anyhow::Result<csv::Writer<T>>
 where
     T: 'static + Write + Send,
 {
