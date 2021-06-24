@@ -44,7 +44,7 @@ impl Consumer for ExportToSheets {
             sheets
                 .append(entry)
                 .await
-                .context(format!("Failed to append entry"))?;
+                .context("Failed to append entry")?;
         }
 
         println!(

@@ -33,7 +33,7 @@ impl<T: Write + Send> Consumer for Print<T> {
                 .collect(),
         )
         .await
-        .context(format!("Failed to output columns names"))?;
+        .context("Failed to output columns names")?;
 
         let mut row_index: usize = 1;
 

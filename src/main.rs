@@ -161,7 +161,10 @@ async fn main() {
     }
     // if user specified the print flag, they must want to print to terminal
     if cli.print {
-        if let Err(e) = Print::new(io::stdout()).consume(&mut rx, column_names.unwrap()).await {
+        if let Err(e) = Print::new(io::stdout())
+            .consume(&mut rx, column_names.unwrap())
+            .await
+        {
             println!("Error while printing results: {}", e);
         }
     }
