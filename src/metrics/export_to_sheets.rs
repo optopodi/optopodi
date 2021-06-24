@@ -24,7 +24,7 @@ impl Consumer for ExportToSheets {
         self,
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> anyhow::Result<()> {
         let sheets = Sheets::initialize(&self.sheet_id).await?;
 
         // clear existing data from sheet

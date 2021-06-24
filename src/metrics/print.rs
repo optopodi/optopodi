@@ -24,7 +24,7 @@ impl<T: Write + Send> Consumer for Print<T> {
         mut self,
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> anyhow::Result<()> {
         self.csv_writer = write_record_not_blocking(
             self.csv_writer,
             vec!["#".to_string()]
@@ -59,7 +59,7 @@ impl<T: Write + Send> Consumer for Print<T> {
 async fn write_record_not_blocking<T>(
     mut csv_writer: csv::Writer<T>,
     record: Vec<String>,
-) -> Result<csv::Writer<T>, anyhow::Error>
+) -> anyhow::Result<csv::Writer<T>>
 where
     T: 'static + Write + Send,
 {
@@ -72,7 +72,7 @@ where
 
 async fn flush_not_blocking<T>(
     mut csv_writer: csv::Writer<T>,
-) -> Result<csv::Writer<T>, anyhow::Error>
+) -> anyhow::Result<csv::Writer<T>>
 where
     T: 'static + Write + Send,
 {
