@@ -13,7 +13,7 @@ use graphql_client::GraphQLQuery;
 struct OrgRepos;
 
 #[throws]
-pub(super) async fn all_repos(graphql: &Graphql, org: &str) -> Vec<String> {
+pub(super) async fn all_repos(graphql: &mut Graphql, org: &str) -> Vec<String> {
     let org_name = format!("{}", org);
     let mut repos: Vec<String> = vec![];
     let mut after_cursor = None;
@@ -71,7 +71,7 @@ struct CountPullRequests;
 /// - `time_period` — The relevant time period to search within
 #[throws]
 pub(super) async fn count_pull_requests(
-    graphql: &Graphql,
+    graphql: &mut Graphql,
     org_name: &str,
     repo_name: &str,
     time_period: Duration,

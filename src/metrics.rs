@@ -10,7 +10,11 @@ mod util;
 
 #[async_trait]
 pub trait Producer {
+    /// What columns names are produced.
     fn column_names(&self) -> Vec<String>;
+
+    /// Executes the producer and sends columns off to the given "tx" endpoint
+    /// of a channel.
     async fn producer_task(self, tx: Sender<Vec<String>>) -> anyhow::Result<()>;
 }
 

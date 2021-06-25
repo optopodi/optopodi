@@ -1,0 +1,26 @@
+[github]
+org = "rust-lang"
+repos = [
+    "rust",
+    "rustup",
+    "rustfmt",
+    "rustfix",
+    "cargo",
+    "crates.io",
+    "docs.rs",
+    "mdBook",
+]
+
+[data_source]
+number_of_days = 30
+
+[high_contributor]
+high_reviewer_min_percentage = 10
+high_reviewer_min_prs = 2
+high_participant_min_percentage = 15
+high_participant_min_prs = 2
+high_author_min_percentage = 10
+high_author_min_prs = 2
+high_contributor_categories_threshold = 2
+reviewer_saturation_threshold = 50
+author_saturation_threshold = 50

@@ -7,12 +7,12 @@ use fehler::throws;
 use graphql_client::GraphQLQuery;
 use tokio::sync::mpsc::Sender;
 
-use super::{util, Graphql, Producer};
+use super::{Graphql, Producer};
 
 pub struct RepoParticipants {
     graphql: Graphql,
     org_name: String,
-    repo_name: Option<String>,
+    repo_names: Vec<String>,
     number_of_days: i64,
 }
 
@@ -20,13 +20,13 @@ impl RepoParticipants {
     pub fn new(
         graphql: Graphql,
         org_name: String,
-        repo_name: Option<String>,
+        repo_names: Vec<String>,
         number_of_days: i64,
     ) -> Self {
         Self {
             graphql,
             org_name,
-            repo_name,
+            repo_names,
             number_of_days,
         }
     }
@@ -45,18 +45,13 @@ impl Producer for RepoParticipants {
         ]
     }
 
-    async fn producer_task(self, tx: Sender<Vec<String>>) -> Result<(), anyhow::Error> {
+    async fn producer_task(mut self, tx: Sender<Vec<String>>) -> Result<(), anyhow::Error> {
         // If no repository is given, repeat for all repositories.
-        let repo_names = match &self.repo_name {
-            Some(n) => vec![n.to_string()],
-            None => util::all_repos(&self.graphql, &self.org_name).await?,
-        };
-
-        for repo_name in repo_names {
+        for repo_name in &self.repo_names {
             let data = pr_participants(
-                &self.graphql,
+                &mut self.graphql,
                 &self.org_name,
-                &repo_name,
+                repo_name,
                 Duration::days(self.number_of_days),
             )
             .await?;
@@ -114,7 +109,7 @@ use prs_and_participants as pap;
 /// - `time_period` — The relevant time period to search within
 #[throws]
 async fn pr_participants(
-    graphql: &Graphql,
+    graphql: &mut Graphql,
     org_name: &str,
     repo_name: &str,
     time_period: Duration,

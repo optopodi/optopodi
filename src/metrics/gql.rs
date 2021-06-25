@@ -1,26 +1,23 @@
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
+use std::path::PathBuf;
 
 use anyhow::Error;
 use fehler::throws;
 use graphql_client::{GraphQLQuery, Response};
 use serde::Serialize;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Graphql {
-    export_prefix: Option<String>,
-    export_counter: Arc<AtomicUsize>,
-    import_prefix: Option<String>,
+    graphql_dir: PathBuf,
+    counter: usize,
+    replay: bool,
 }
 
 impl Graphql {
-    pub fn new(export_prefix: &Option<String>, import_prefix: &Option<String>) -> Self {
+    pub fn new(graphql_dir: PathBuf, replay: bool) -> Self {
         Self {
-            export_prefix: export_prefix.clone(),
-            import_prefix: import_prefix.clone(),
-            export_counter: Default::default(),
+            graphql_dir,
+            replay,
+            counter: 0,
         }
     }
 
@@ -31,7 +28,7 @@ impl Graphql {
     /// ```ignore
     /// config.query(QueryStruct).execute(query_struct::Variables { ... })
     /// ```
-    pub fn query<Q>(&self, query: Q) -> GraphqlAttached<'_, Q>
+    pub fn query<Q>(&mut self, query: Q) -> GraphqlAttached<'_, Q>
     where
         Q: GraphQLQuery,
     {
@@ -46,7 +43,7 @@ pub struct GraphqlAttached<'me, Q>
 where
     Q: GraphQLQuery,
 {
-    config: &'me Graphql,
+    config: &'me mut Graphql,
     _query: Q,
 }
 
@@ -61,26 +58,28 @@ where
     {
         let body = Q::build_query(variables);
 
-        let count = self.config.export_counter.fetch_add(1, Ordering::SeqCst);
+        // get a unique integer for this particular request
+        let count = self.config.counter;
+        self.config.counter += 1;
 
-        if let Some(import_prefix) = &self.config.import_prefix {
-            let path = format!("{}.{}.json", import_prefix, count);
+        // create the directory and a file within it
+        tokio::fs::create_dir_all(&self.config.graphql_dir).await?;
+        let path = self.config.graphql_dir.join(format!("{}.json", count));
 
-            log::info!("loading response data from `{}` rather than github", path);
-
-            let response_json = tokio::fs::read(&path).await?;
-
-            serde_json::from_slice(&response_json)?
-        } else {
+        if !self.config.replay {
+            // execute query and save the data to the file
             let response = octocrab::instance().post("graphql", Some(&body)).await?;
-
-            if let Some(export_prefix) = &self.config.export_prefix {
-                let path = format!("{}.{}.json", export_prefix, count);
-                let response_json = serde_json::to_string(&response)?;
-                tokio::fs::write(&path, response_json.as_bytes()).await?;
-            }
-
+            let response_json = serde_json::to_string(&response)?;
+            tokio::fs::write(&path, response_json.as_bytes()).await?;
             response
+        } else {
+            // if replaying, load the data form the file
+            log::info!(
+                "loading response data from `{}` rather than github",
+                path.display()
+            );
+            let response_json = tokio::fs::read(&path).await?;
+            serde_json::from_slice(&response_json)?
         }
     }
 }
