@@ -3,7 +3,6 @@ use clap::{AppSettings, Clap};
 use fehler::throws;
 use std::path::PathBuf;
 
-mod google_sheets;
 mod metrics;
 mod report;
 mod token;
@@ -43,7 +42,7 @@ async fn main() {
 
     match cli.cmd {
         Cmd::Report { directory } => {
-            return Report::new(PathBuf::from(directory), cli.replay_graphql)
+            Report::new(PathBuf::from(directory), cli.replay_graphql)
                 .run()
                 .await?;
         }

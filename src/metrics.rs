@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
-mod export_to_sheets;
 mod gql;
 mod list_repos;
 mod print;
@@ -27,7 +26,6 @@ pub trait Consumer {
     ) -> anyhow::Result<()>;
 }
 
-pub use export_to_sheets::ExportToSheets;
 pub use gql::Graphql;
 pub use list_repos::ListReposForOrg;
 pub use print::Print;
