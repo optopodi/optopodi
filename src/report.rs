@@ -80,7 +80,9 @@ impl Report {
         tokio::fs::create_dir_all(self.output_dir()).await?;
 
         let repo_participants = self.repo_participants(&config).await?;
+        let repo_infos = self.repo_infos(&config).await?;
         eprintln!("{:#?}", repo_participants);
+        eprintln!("{:#?}", repo_infos);
     }
 
     #[throws]
@@ -91,7 +93,7 @@ impl Report {
     }
 
     fn graphql_dir(&self) -> PathBuf {
-        self.data_dir.join("inputs")
+        self.data_dir.join("graphql")
     }
 
     fn input_dir(&self) -> PathBuf {
@@ -99,7 +101,7 @@ impl Report {
     }
 
     fn output_dir(&self) -> PathBuf {
-        self.data_dir.join("inputs")
+        self.data_dir.join("output")
     }
 
     #[throws]
