@@ -98,6 +98,12 @@ impl RepoParticipants {
     }
 }
 
+impl RepoParticipant {
+    pub(super) fn reviewed_or_resolved(&self) -> u64 {
+        self.reviewed.max(self.resolved)
+    }
+}
+
 fn is_robot(login: &str) -> bool {
     // FIXME: move to configuration
     const ROBOTS: &[&str] = &[

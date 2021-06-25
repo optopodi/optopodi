@@ -3,16 +3,19 @@ use fehler::throws;
 use serde::Deserialize;
 use std::{collections::HashMap, path::Path};
 
-use crate::metrics::{self, Graphql};
+use crate::{
+    metrics::{self, Graphql},
+    util::percentage,
+};
 
-use super::{Report, ReportConfig};
+use super::{repo_participant::RepoParticipant, Report, ReportConfig};
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct RepoInfos {
     pub repos: HashMap<String, RepoInfo>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct RepoInfo {
     #[serde(rename = "#")]
     pub row: usize,
@@ -56,5 +59,36 @@ impl RepoInfos {
             map.insert(record.repo.clone(), record);
         }
         RepoInfos { repos: map }
+    }
+
+    pub(super) fn get(&self, repo: &str) -> &RepoInfo {
+        &self.repos[repo]
+    }
+}
+
+impl RepoInfo {
+    pub(super) fn is_high_contributor(
+        &self,
+        config: &ReportConfig,
+        participant: &RepoParticipant,
+    ) -> bool {
+        let hc = &config.high_contributor;
+
+        let participated_in_percentage = percentage(participant.participated_in, self.num_prs);
+        let authored_percentage = percentage(participant.authored, self.num_prs);
+        let reviewed_or_resolved_percentage =
+            percentage(participant.reviewed_or_resolved(), self.num_prs);
+
+        // Identify "high" reviewers or active people.
+        let high_reviewer = reviewed_or_resolved_percentage > hc.high_reviewer_min_percentage
+            || participant.reviewed_or_resolved() > hc.high_reviewer_min_prs;
+        let high_activity = participated_in_percentage > hc.high_participant_min_percentage
+            && participant.participated_in > hc.high_participant_min_prs;
+        let high_author = authored_percentage > hc.high_author_min_percentage
+            && participant.authored > hc.high_author_min_prs;
+        let high_total = high_reviewer as u64 + high_activity as u64 + high_author as u64;
+
+        // Being "highly active" in more ways than one makes you a high contributor.
+        high_total >= hc.high_contributor_categories_threshold
     }
 }

@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 use std::{fs::File, path::PathBuf};
 
 use anyhow::Error;
@@ -8,6 +9,7 @@ use serde::Deserialize;
 use crate::metrics;
 use crate::metrics::Consumer;
 
+mod high_contributor;
 mod repo_info;
 mod repo_participant;
 
@@ -24,6 +26,12 @@ struct ReportConfig {
     github: GithubConfig,
     high_contributor: HighContributorConfig,
     data_source: DataSourceConfig,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReportData {
+    repo_participants: repo_participant::RepoParticipants,
+    repo_infos: repo_info::RepoInfos,
 }
 
 #[derive(Deserialize, Debug)]
@@ -73,16 +81,18 @@ impl Report {
     #[throws]
     pub async fn run(mut self) {
         // Load the report configuration from the data directory.
-        let config = self.load_config().await?;
+        let config = Arc::new(self.load_config().await?);
 
         tokio::fs::create_dir_all(self.graphql_dir()).await?;
         tokio::fs::create_dir_all(self.input_dir()).await?;
         tokio::fs::create_dir_all(self.output_dir()).await?;
 
-        let repo_participants = self.repo_participants(&config).await?;
-        let repo_infos = self.repo_infos(&config).await?;
-        eprintln!("{:#?}", repo_participants);
-        eprintln!("{:#?}", repo_infos);
+        let data = Arc::new(ReportData {
+            repo_participants: self.repo_participants(&config).await?,
+            repo_infos: self.repo_infos(&config).await?,
+        });
+
+        tokio::task::spawn_blocking(move || self.write_high_contributors(&config, &data)).await??;
     }
 
     #[throws]
