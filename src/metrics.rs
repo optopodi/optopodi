@@ -30,6 +30,7 @@ pub use gql::Graphql;
 pub use list_repos::ListReposForOrg;
 pub use print::Print;
 pub use repo_participants::RepoParticipants;
+pub use util::all_repos;
 
 /// Spawns a task running a producer and returns the column names
 /// that it will produce along with

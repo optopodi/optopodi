@@ -13,7 +13,7 @@ use graphql_client::GraphQLQuery;
 struct OrgRepos;
 
 #[throws]
-pub(super) async fn all_repos(graphql: &mut Graphql, org: &str) -> Vec<String> {
+pub async fn all_repos(graphql: &mut Graphql, org: &str) -> Vec<String> {
     let org_name = format!("{}", org);
     let mut repos: Vec<String> = vec![];
     let mut after_cursor = None;

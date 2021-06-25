@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use crate::metrics;
-use crate::metrics::Graphql;
 use crate::report::repo_info::RepoInfo;
 use crate::report::Report;
 use crate::util::percentage;
@@ -39,9 +38,7 @@ impl Report {
     pub(super) async fn repo_participants(&self, config: &ReportConfig) -> RepoParticipants {
         let input_dir = self.input_dir();
         let repo_participants = input_dir.join("repo-participants.csv");
-
-        let graphql_dir = self.graphql_dir().join("repo-participants");
-        let graphql = Graphql::new(graphql_dir, self.replay_graphql);
+        let graphql = self.graphql("repo-participants");
 
         self.produce_input(
             &repo_participants,

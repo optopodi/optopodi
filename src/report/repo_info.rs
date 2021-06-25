@@ -3,10 +3,7 @@ use fehler::throws;
 use serde::Deserialize;
 use std::{collections::HashMap, path::Path};
 
-use crate::{
-    metrics::{self, Graphql},
-    util::percentage,
-};
+use crate::{metrics, util::percentage};
 
 use super::{repo_participant::RepoParticipant, Report, ReportConfig};
 
@@ -31,8 +28,7 @@ impl Report {
         let input_dir = self.input_dir();
         let repo_infos = input_dir.join("repo-infos.csv");
 
-        let graphql_dir = self.graphql_dir().join("repo-infos");
-        let graphql = Graphql::new(graphql_dir, self.replay_graphql);
+        let graphql = self.graphql("repo-infos");
 
         self.produce_input(
             &repo_infos,

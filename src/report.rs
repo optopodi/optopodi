@@ -6,12 +6,13 @@ use anyhow::Error;
 use fehler::throws;
 use serde::Deserialize;
 
-use crate::metrics;
 use crate::metrics::Consumer;
+use crate::metrics::{self, Graphql};
 
 mod high_contributor;
 mod repo_info;
 mod repo_participant;
+mod top_crates;
 
 pub struct Report {
     /// Directory where to store the data.
@@ -28,10 +29,11 @@ struct ReportConfig {
     data_source: DataSourceConfig,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 pub struct ReportData {
     repo_participants: repo_participant::RepoParticipants,
     repo_infos: repo_info::RepoInfos,
+    top_crates: Vec<top_crates::TopCrateInfo>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -88,18 +90,36 @@ impl Report {
         tokio::fs::create_dir_all(self.output_dir()).await?;
 
         let data = Arc::new(ReportData {
+            top_crates: self.top_crates(&config).await?,
             repo_participants: self.repo_participants(&config).await?,
             repo_infos: self.repo_infos(&config).await?,
         });
 
-        tokio::task::spawn_blocking(move || self.write_high_contributors(&config, &data)).await??;
+        tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+            self.write_top_crates(&config, &data)?;
+            self.write_high_contributors(&config, &data)?;
+            Ok(())
+        })
+        .await??;
     }
 
     #[throws]
     async fn load_config(&mut self) -> ReportConfig {
         let report_config_file = self.data_dir.join("report.toml");
         let report_config_bytes = tokio::fs::read_to_string(report_config_file).await?;
-        toml::from_str(&report_config_bytes)?
+        let mut config: ReportConfig = toml::from_str(&report_config_bytes)?;
+
+        if config.github.repos.is_empty() {
+            let graphql = &mut self.graphql("all-repos");
+            config.github.repos = metrics::all_repos(graphql, &config.github.org).await?;
+        }
+
+        config
+    }
+
+    fn graphql(&self, dir_name: &str) -> Graphql {
+        let graphql_dir = self.graphql_dir().join(dir_name);
+        Graphql::new(graphql_dir, self.replay_graphql)
     }
 
     fn graphql_dir(&self) -> PathBuf {
