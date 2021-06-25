@@ -4,13 +4,12 @@ use fehler::throws;
 use serde_derive::Deserialize;
 use std::convert::TryInto;
 use std::path::Path;
-use tokio::sync::mpsc;
 
 mod google_sheets;
 mod metrics;
 mod token;
 
-use metrics::{Consumer, ExportToSheets, ListReposForOrg, Print, Producer, RepoParticipants};
+use metrics::{Consumer, ExportToSheets, ListReposForOrg, Print, RepoParticipants};
 use std::io;
 
 #[derive(Debug, Deserialize, Default)]
@@ -62,7 +61,7 @@ struct OctoCli {
 
     /// the sub-command to run
     #[clap(subcommand)]
-    cmd: Option<Cmd>,
+    cmd: Cmd,
 
     /// Prefix to use for exporting the results of graphql queries
     #[clap(short, long)]
@@ -120,40 +119,19 @@ async fn main() {
         (None, None) => None,
     };
 
-    let mut column_names: Option<Vec<String>> = None;
-    let (tx, mut rx) = mpsc::channel::<Vec<String>>(400);
-
     let graphql = metrics::Graphql::new(&cli.export_graphql, &cli.import_graphql);
 
-    if let Some(cmd) = cli.cmd {
-        match cmd {
-            Cmd::List => {
-                let list_repos = ListReposForOrg::new(graphql, org_name, num_days);
-                column_names = Some(list_repos.column_names());
-
-                tokio::spawn(async move {
-                    if let Err(e) = list_repos.producer_task(tx).await {
-                        println!("Encountered an error while collecting data: {:#?}", e);
-                    };
-                });
-            }
-            Cmd::RepoParticipants => {
-                let repo_participants = RepoParticipants::new(graphql, org_name, repo, 30);
-                column_names = Some(repo_participants.column_names());
-
-                tokio::spawn(async move {
-                    if let Err(e) = repo_participants.producer_task(tx).await {
-                        println!("Encountered an error while collecting data: {}", e);
-                    };
-                });
-            }
+    let (column_names, mut rx) = match cli.cmd {
+        Cmd::List => metrics::run_producer(ListReposForOrg::new(graphql, org_name, num_days)),
+        Cmd::RepoParticipants => {
+            metrics::run_producer(RepoParticipants::new(graphql, org_name, repo, 30))
         }
-    }
+    };
 
     // if user specified a google sheet ID, they must want to export data to that sheet
     if let Some(sheet_id) = sheet_id {
         if let Err(e) = ExportToSheets::new(&sheet_id)
-            .consume(&mut rx, column_names.clone().unwrap())
+            .consume(&mut rx, column_names.clone())
             .await
         {
             println!("Error exporting to sheets: {}", e);
@@ -162,7 +140,7 @@ async fn main() {
     // if user specified the print flag, they must want to print to terminal
     if cli.print {
         if let Err(e) = Print::new(io::stdout())
-            .consume(&mut rx, column_names.unwrap())
+            .consume(&mut rx, column_names)
             .await
         {
             println!("Error while printing results: {}", e);
