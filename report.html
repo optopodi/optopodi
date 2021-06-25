@@ -3,9 +3,8 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title></title>
-                        <base href="/">
-        
+        <title>Generating a report - Github Metrics</title>
+                
 
         <!-- Custom HTML head -->
         
@@ -83,7 +82,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="welcome.html"><strong aria-hidden="true">1.</strong> 👋🏽 Welcome</a></li><li class="chapter-item expanded "><a href="report.html"><strong aria-hidden="true">2.</strong> Generating a report</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">3.</strong> Contributing</a></li></ol>            </div>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="welcome.html"><strong aria-hidden="true">1.</strong> 👋🏽 Welcome</a></li><li class="chapter-item expanded "><a href="report.html" class="active"><strong aria-hidden="true">2.</strong> Generating a report</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">3.</strong> Contributing</a></li></ol>            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
 
@@ -144,14 +143,48 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="document-not-found-404"><a class="header" href="#document-not-found-404">Document not found (404)</a></h1>
-<p>This URL is invalid, sorry. Please use the navigation bar or search to continue.</p>
+                        <h1 id="generating-a-report"><a class="header" href="#generating-a-report">Generating a report</a></h1>
+<p>Optopodi is geared to generate <strong>reports</strong>. These are CSV files that summarize important information about your repository or repositories. To create a report you need to take the following steps:</p>
+<ul>
+<li>Make a directory <code>$DIR</code> for the report. We recommend a name like <code>data/2021-06-26</code>.</li>
+<li>Create a <code>report.toml</code> file in that directory. You can start with <a href="https://github.com/optopodi/optopodi/blob/main/report-template.toml">the template</a> and customize it.</li>
+<li>Configure a github token. This is loaded from one of two sources:
+<ul>
+<li>The <code>GITHUB_TOKEN</code> environment variable, if present.</li>
+<li>Otherwise, from the <code>github.oauth-token</code> setting in <code>~/.gitconfig</code>.</li>
+</ul>
+</li>
+<li>Optionally, create a <code>crate-information.json</code> file in <code>$DIR</code>.
+<ul>
+<li>This defines notable crates from the ecosystem that you wish to analyze. You can generate this file using the <a href="https://github.com/integer32llc/rust-playground/tree/master/top-crates">top-crates</a> crate from the Rust playground.</li>
+<li>If you don't have such a file, we'll skip this step.</li>
+</ul>
+</li>
+<li>Run <code>cargo run -- report $DIR</code>. This will populate the following subdirectories:
+<ul>
+<li><code>$DIR/graphql</code> -- saved results of graphql queries. These can be &quot;replayed&quot; later to avoid hitting the network. This makes things faster and avoids generating tons of github API calls when debugging (which can easily exceed your quota).</li>
+<li><code>$DIR/inputs</code> -- intermediate CSV files containing data extracted from the graphql queries.</li>
+<li><code>$DIR/outputs</code> -- contains the CSV files you are meant to look at.</li>
+</ul>
+</li>
+<li>You can run with the <code>--replay-graphql</code> setting to re-use saved graphql queries: <code>cargo run -- --replay-graphql report $DIR</code>
+<ul>
+<li>This is most useful when debugging or tweaking the code.</li>
+</ul>
+</li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                                                    <a rel="prev" href="welcome.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
                         
+                                                    <a rel="next" href="contributing.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
                         
                         <div style="clear: both"></div>
                     </nav>
@@ -159,7 +192,13 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                                    <a rel="prev" href="welcome.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
                 
+                                    <a rel="next" href="contributing.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
                             </nav>
 
         </div>
