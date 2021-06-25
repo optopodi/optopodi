@@ -1,5 +1,5 @@
 [package]
-name = "github-metrics"
+name = "optopodi"
 version = "0.1.0"
 authors = ["Niko Matsakis <niko@alum.mit.edu>"]
 edition = "2018"
@@ -29,3 +29,4 @@ graphql_client = "0.9.0"
 log = "0.4"
 env_logger = "0.8"
 csv = "1.1"
+semver = "1.0"

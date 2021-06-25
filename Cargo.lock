@@ -464,34 +464,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e4075386626662786ddb0ec9081e7c7eeb1ba31951f447ca780ef9f5d568189"
 
 [[package]]
-name = "github-metrics"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "clap",
- "csv",
- "env_logger",
- "fehler",
- "graphql_client",
- "hyper",
- "hyper-rustls",
- "log",
- "octocrab",
- "reqwest",
- "serde",
- "serde_derive",
- "serde_json",
- "sheets",
- "snafu",
- "tokio",
- "toml",
- "url",
- "yup-oauth2",
-]
-
-[[package]]
 name = "graphql-introspection-query"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -969,6 +941,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "optopodi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "clap",
+ "csv",
+ "env_logger",
+ "fehler",
+ "graphql_client",
+ "hyper",
+ "hyper-rustls",
+ "log",
+ "octocrab",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "sheets",
+ "snafu",
+ "tokio",
+ "toml",
+ "url",
+ "yup-oauth2",
+]
+
+[[package]]
 name = "os_str_bytes"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1325,6 +1326,12 @@ dependencies = [
  "core-foundation-sys",
  "libc",
 ]
+
+[[package]]
+name = "semver"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f3aac57ee7f3272d8395c6e4f502f434f0e289fcd62876f70daa008c20dcabe"
 
 [[package]]
 name = "serde"
