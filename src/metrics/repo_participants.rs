@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
-use anyhow::Error;
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use fehler::throws;
 use graphql_client::GraphQLQuery;
+use stable_eyre::eyre;
+use stable_eyre::eyre::Error;
 use tokio::sync::mpsc::Sender;
 
 use super::{Graphql, Producer};
@@ -45,7 +46,7 @@ impl Producer for RepoParticipants {
         ]
     }
 
-    async fn producer_task(mut self, tx: Sender<Vec<String>>) -> Result<(), anyhow::Error> {
+    async fn producer_task(mut self, tx: Sender<Vec<String>>) -> Result<(), eyre::Error> {
         // If no repository is given, repeat for all repositories.
         for repo_name in &self.repo_names {
             let data = pr_participants(
@@ -184,7 +185,7 @@ async fn pr_participants(
             // query in which we identify a PR by its internal ID and walk our way through
             // the list of participants.
             if participants_found != pr.participants.total_count {
-                anyhow::bail!("FIXME: pagination support for participants list");
+                eyre::bail!("FIXME: pagination support for participants list");
             }
 
             // Count the number of PRs on which a person has issued a review.
@@ -215,7 +216,7 @@ async fn pr_participants(
             }
 
             if reviews_found != reviews.total_count {
-                anyhow::bail!("FIXME: pagination support for participants list");
+                eyre::bail!("FIXME: pagination support for participants list");
             }
 
             // Count the number of PRs which a person has authored.

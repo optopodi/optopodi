@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use stable_eyre::eyre;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
 mod gql;
@@ -14,7 +15,7 @@ pub trait Producer {
 
     /// Executes the producer and sends columns off to the given "tx" endpoint
     /// of a channel.
-    async fn producer_task(self, tx: Sender<Vec<String>>) -> anyhow::Result<()>;
+    async fn producer_task(self, tx: Sender<Vec<String>>) -> eyre::Result<()>;
 }
 
 #[async_trait]
@@ -23,7 +24,7 @@ pub trait Consumer {
         self,
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
-    ) -> anyhow::Result<()>;
+    ) -> eyre::Result<()>;
 }
 
 pub use gql::Graphql;

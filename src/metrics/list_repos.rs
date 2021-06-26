@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use chrono::Duration;
+use stable_eyre::eyre;
 use tokio::sync::mpsc::Sender;
 
 use super::{util, Graphql, Producer};
@@ -34,7 +35,7 @@ impl Producer for ListReposForOrg {
         vec![String::from("Repository Name"), String::from("# of PRs")]
     }
 
-    async fn producer_task(mut self, tx: Sender<Vec<String>>) -> Result<(), anyhow::Error> {
+    async fn producer_task(mut self, tx: Sender<Vec<String>>) -> Result<(), eyre::Error> {
         for repo in &self.repo_names {
             let count_prs = util::count_pull_requests(
                 &mut self.graphql,
