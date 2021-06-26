@@ -1,7 +1,9 @@
 use std::io::Write;
 
-use anyhow::Context;
 use async_trait::async_trait;
+use stable_eyre::eyre;
+use stable_eyre::eyre::WrapErr;
+
 use tokio::sync::mpsc::Receiver;
 
 use super::Consumer;
@@ -24,7 +26,7 @@ impl<T: Write + Send> Consumer for Print<T> {
         mut self,
         rx: &mut Receiver<Vec<String>>,
         column_names: Vec<String>,
-    ) -> anyhow::Result<()> {
+    ) -> eyre::Result<()> {
         self.csv_writer = write_record_not_blocking(
             self.csv_writer,
             vec!["#".to_string()]
@@ -33,7 +35,7 @@ impl<T: Write + Send> Consumer for Print<T> {
                 .collect(),
         )
         .await
-        .context("Failed to output columns names")?;
+        .wrap_err("Failed to output columns names")?;
 
         let mut row_index: usize = 1;
 
@@ -46,7 +48,7 @@ impl<T: Write + Send> Consumer for Print<T> {
                     .collect(),
             )
             .await
-            .context(format!("Failed to output {}-th entry", row_index))?;
+            .wrap_err(format!("Failed to output {}-th entry", row_index))?;
             row_index += 1;
         }
 
@@ -59,7 +61,7 @@ impl<T: Write + Send> Consumer for Print<T> {
 async fn write_record_not_blocking<T>(
     mut csv_writer: csv::Writer<T>,
     record: Vec<String>,
-) -> anyhow::Result<csv::Writer<T>>
+) -> eyre::Result<csv::Writer<T>>
 where
     T: 'static + Write + Send,
 {
@@ -70,7 +72,7 @@ where
     .await?
 }
 
-async fn flush_not_blocking<T>(mut csv_writer: csv::Writer<T>) -> anyhow::Result<csv::Writer<T>>
+async fn flush_not_blocking<T>(mut csv_writer: csv::Writer<T>) -> eyre::Result<csv::Writer<T>>
 where
     T: 'static + Write + Send,
 {

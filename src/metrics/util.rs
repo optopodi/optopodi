@@ -1,8 +1,8 @@
 use super::Graphql;
-use anyhow::Error;
 use chrono::{Duration, Utc};
 use fehler::throws;
 use graphql_client::GraphQLQuery;
+use stable_eyre::eyre::Error;
 
 #[derive(GraphQLQuery)]
 #[graphql(

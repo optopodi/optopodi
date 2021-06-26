@@ -1,6 +1,6 @@
-use anyhow::Error;
 use fehler::throws;
 use serde::Deserialize;
+use stable_eyre::eyre::Error;
 use std::{collections::HashMap, path::Path};
 
 use crate::{metrics, util::percentage};

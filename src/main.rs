@@ -1,6 +1,6 @@
-use anyhow::Error;
 use clap::{AppSettings, Clap};
 use fehler::throws;
+use stable_eyre::eyre::Error;
 use std::path::PathBuf;
 
 mod metrics;
@@ -31,6 +31,7 @@ enum Cmd {
 #[throws]
 #[tokio::main]
 async fn main() {
+    stable_eyre::install()?;
     env_logger::init();
 
     let token = token::github_token()?;

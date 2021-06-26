@@ -4,9 +4,9 @@ use crate::metrics;
 use crate::report::repo_info::RepoInfo;
 use crate::report::Report;
 use crate::util::percentage;
-use anyhow::Error;
 use fehler::throws;
 use serde::Deserialize;
+use stable_eyre::eyre::Error;
 
 use super::ReportConfig;
 

@@ -1,8 +1,8 @@
 use super::{Report, ReportConfig, ReportData};
 use crate::util::percentage;
-use anyhow::Error;
 use fehler::throws;
 use serde::Deserialize;
+use stable_eyre::eyre::Error;
 use std::{fs::File, path::Path};
 
 #[derive(Debug)]

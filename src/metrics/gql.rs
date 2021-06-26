@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
-use anyhow::Error;
 use fehler::throws;
 use graphql_client::{GraphQLQuery, Response};
 use serde::Serialize;
+use stable_eyre::eyre::Error;
 
 #[derive(Clone, Debug)]
 pub struct Graphql {

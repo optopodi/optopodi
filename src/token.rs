@@ -1,5 +1,6 @@
-use anyhow::Error;
 use fehler::throws;
+use stable_eyre::eyre;
+use stable_eyre::eyre::Error;
 
 /// Finds the token in the user's environment, panicking if no suitable token
 /// can be found.
@@ -13,7 +14,7 @@ pub fn github_token() -> String {
         return s;
     }
 
-    anyhow::bail!("could not find github token");
+    eyre::bail!("could not find github token");
 }
 
 fn get_token_from_env() -> Option<String> {

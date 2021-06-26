@@ -2,9 +2,10 @@ use std::path::Path;
 use std::sync::Arc;
 use std::{fs::File, path::PathBuf};
 
-use anyhow::Error;
 use fehler::throws;
 use serde::Deserialize;
+use stable_eyre::eyre;
+use stable_eyre::eyre::Error;
 
 use crate::metrics::Consumer;
 use crate::metrics::{self, Graphql};
@@ -95,7 +96,7 @@ impl Report {
             repo_infos: self.repo_infos(&config).await?,
         });
 
-        tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+        tokio::task::spawn_blocking(move || -> eyre::Result<()> {
             self.write_top_crates(&config, &data)?;
             self.write_high_contributors(&config, &data)?;
             Ok(())

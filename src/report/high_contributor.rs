@@ -1,9 +1,9 @@
 use super::{
     repo_info::RepoInfo, repo_participant::RepoParticipant, Report, ReportConfig, ReportData,
 };
-use anyhow::Error;
 use fehler::throws;
 use serde::Serialize;
+use stable_eyre::eyre::Error;
 use std::fs::File;
 
 #[derive(Debug, Serialize)]
