@@ -12,7 +12,7 @@ use crate::report::Report;
 
 #[derive(Clap, Debug, PartialEq)]
 #[clap(setting = AppSettings::ColoredHelp)]
-#[clap(name = "gh-metrics")]
+#[clap(name = "optopodi")]
 struct OctoCli {
     /// Load the saved results of grapql queries from disk (if they are present).
     #[clap(long)]
