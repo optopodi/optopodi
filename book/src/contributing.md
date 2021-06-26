@@ -1,5 +1,7 @@
 # Contributing
 
+Want to help? Great! This is a fun project to hack on because it's relatively simple. It's a good way to get acquainted with async Rust and Rust in general. You'll find lots of project ideas on the [issues page](https://github.com/optopodi/optopodi/issues).
+
 ## Code of conduct
 
 We follow the [Rust code of conduct](https://www.rust-lang.org/policies/code-of-conduct). Please report any concerns to a [Lead][leads].
