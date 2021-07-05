@@ -1,6 +1,6 @@
 use fehler::throws;
 use stable_eyre::eyre;
-use stable_eyre::eyre::Error;
+use stable_eyre::eyre::{Error, WrapErr};
 
 /// Finds the token in the user's environment, panicking if no suitable token
 /// can be found.
@@ -10,7 +10,7 @@ pub fn github_token() -> String {
         return s;
     }
 
-    if let Some(s) = get_token_from_git_config()? {
+    if let Some(s) = get_token_from_git_config().wrap_err("Failed to get token from Git Config")? {
         return s;
     }
 
@@ -30,7 +30,8 @@ fn get_token_from_git_config() -> Option<String> {
         .arg("config")
         .arg("--get")
         .arg("github.oauth-token")
-        .output()?;
+        .output()
+        .wrap_err("Failed run `git config --get github.oauth-token`")?;
     if output.status.success() {
         let git_token = String::from_utf8(output.stdout)?.trim().to_string();
         Some(git_token)
