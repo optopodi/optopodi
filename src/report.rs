@@ -4,8 +4,7 @@ use std::{fs::File, path::PathBuf};
 
 use fehler::throws;
 use serde::Deserialize;
-use stable_eyre::eyre;
-use stable_eyre::eyre::Error;
+use stable_eyre::eyre::{self, Error, WrapErr};
 
 use crate::metrics::Consumer;
 use crate::metrics::{self, Graphql};
@@ -84,35 +83,63 @@ impl Report {
     #[throws]
     pub async fn run(mut self) {
         // Load the report configuration from the data directory.
-        let config = Arc::new(self.load_config().await?);
+        let config = Arc::new(self.load_config().await.wrap_err("Failed to load config")?);
 
-        tokio::fs::create_dir_all(self.graphql_dir()).await?;
-        tokio::fs::create_dir_all(self.input_dir()).await?;
-        tokio::fs::create_dir_all(self.output_dir()).await?;
+        tokio::fs::create_dir_all(self.graphql_dir())
+            .await
+            .wrap_err("Failed to create GraphQL Directory")?;
+        tokio::fs::create_dir_all(self.input_dir())
+            .await
+            .wrap_err("Failed to create Input Directory")?;
+        tokio::fs::create_dir_all(self.output_dir())
+            .await
+            .wrap_err("Failed to create Output Directory")?;
 
         let data = Arc::new(ReportData {
-            top_crates: self.top_crates(&config).await?,
-            repo_participants: self.repo_participants(&config).await?,
-            repo_infos: self.repo_infos(&config).await?,
+            top_crates: self
+                .top_crates(&config)
+                .await
+                .wrap_err("Failed to parse Top Crates")?,
+            repo_participants: self
+                .repo_participants(&config)
+                .await
+                .wrap_err("Failed to gather Repo Participants")?,
+            repo_infos: self
+                .repo_infos(&config)
+                .await
+                .wrap_err("Failed to gather Repo Infos")?,
         });
 
         tokio::task::spawn_blocking(move || -> eyre::Result<()> {
-            self.write_top_crates(&config, &data)?;
-            self.write_high_contributors(&config, &data)?;
+            self.write_top_crates(&config, &data)
+                .wrap_err("Failed to write Top Crates")?;
+            self.write_high_contributors(&config, &data)
+                .wrap_err("Failed to write High Contributors")?;
             Ok(())
         })
-        .await??;
+        .await
+        .wrap_err("Failed to spawn Write Tasks")??;
     }
 
     #[throws]
     async fn load_config(&mut self) -> ReportConfig {
         let report_config_file = self.data_dir.join("report.toml");
-        let report_config_bytes = tokio::fs::read_to_string(report_config_file).await?;
-        let mut config: ReportConfig = toml::from_str(&report_config_bytes)?;
+        let report_config_bytes = tokio::fs::read_to_string(report_config_file.clone())
+            .await
+            .wrap_err_with(|| {
+                format!(
+                    "Failed to read Report Config from path {:?}",
+                    report_config_file
+                )
+            })?;
+        let mut config: ReportConfig =
+            toml::from_str(&report_config_bytes).wrap_err("Failed to parse Report Config")?;
 
         if config.github.repos.is_empty() {
             let graphql = &mut self.graphql("all-repos");
-            config.github.repos = metrics::all_repos(graphql, &config.github.org).await?;
+            config.github.repos = metrics::all_repos(graphql, &config.github.org)
+                .await
+                .wrap_err("Failed to gather all repos")?;
         }
 
         config
@@ -138,9 +165,11 @@ impl Report {
     #[throws]
     async fn produce_input(&self, path: &Path, producer: impl metrics::Producer + Send + 'static) {
         let (column_names, mut rx) = metrics::run_producer(producer);
-        let f = File::create(path)?;
+        let f = File::create(&path)
+            .wrap_err_with(|| format!("Failed to create file from path {:?}", path))?;
         metrics::Print::new(f)
             .consume(&mut rx, column_names)
-            .await?;
+            .await
+            .wrap_err("Failed to produce report")?;
     }
 }
