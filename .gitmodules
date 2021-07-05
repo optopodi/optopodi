@@ -1,0 +1,3 @@
+[submodule "rust-playground"]
+	path = rust-playground
+	url = https://github.com/integer32llc/rust-playground.git
