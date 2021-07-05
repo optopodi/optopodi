@@ -2,7 +2,7 @@ use super::{Report, ReportConfig, ReportData};
 use crate::util::percentage;
 use fehler::throws;
 use serde::Deserialize;
-use stable_eyre::eyre::Error;
+use stable_eyre::eyre::{Error, WrapErr};
 use std::{fs::File, path::Path};
 
 #[derive(Debug)]
@@ -17,7 +17,9 @@ impl Report {
     pub(super) async fn top_crates(&self, _config: &ReportConfig) -> Vec<TopCrateInfo> {
         let path = self.data_dir.join("crate-information.json");
         if path.exists() {
-            tokio::task::spawn_blocking(move || load_top_crates(&path)).await??
+            tokio::task::spawn_blocking(move || load_top_crates(&path))
+                .await
+                .wrap_err("Failed to load top crates")??
         } else {
             log::warn!("no crate-information.json file found");
             vec![]
@@ -35,17 +37,25 @@ impl Report {
         let percentage = percentage(stable_crates, total_crates);
 
         let output = self.output_dir().join("top_crate.csv");
-        let output_file = &mut File::create(output)?;
+        let output_file = &mut File::create(output.clone())
+            .wrap_err_with(|| format!("Failed to create file from path {:?}", &output))?;
+
         let mut csv = csv::Writer::from_writer(output_file);
-        csv.write_record(&["Measurement".to_string(), "Value".to_string()])?;
+
+        csv.write_record(&["Measurement".to_string(), "Value".to_string()])
+            .wrap_err("Failed to write headers while writing top crates")?;
+
         csv.write_record(&[
             "Total 'significant' crates".to_string(),
             total_crates.to_string(),
-        ])?;
+        ])
+        .wrap_err("Failed to write Total Significant Crates while writing top crates")?;
+
         csv.write_record(&[
             "crates at 1.0 or higher".to_string(),
             percentage.to_string(),
-        ])?;
+        ])
+        .wrap_err("Failed to write High Percentage crates while writing top crates")?;
     }
 }
 
@@ -60,11 +70,14 @@ fn load_top_crates(path: &Path) -> Vec<TopCrateInfo> {
         version: String,
         id: String,
     }
-    let data = std::fs::read_to_string(&path)?;
-    let data: Vec<TC> = serde_json::from_str(&data)?;
+    let data = std::fs::read_to_string(&path.clone())
+        .wrap_err_with(|| format!("Failed to read data from path {:?}", &path))?;
+    let data: Vec<TC> = serde_json::from_str(&data)
+        .wrap_err_with(|| format!("Failed to serialize data: {}", data))?;
     let mut vec = Vec::new();
     for TC { name, version, id } in data {
-        let version = semver::Version::parse(&version)?;
+        let version = semver::Version::parse(&version.clone())
+            .wrap_err_with(|| format!("Failed to parse version from {}", version))?;
         vec.push(TopCrateInfo { name, version, id });
     }
     vec

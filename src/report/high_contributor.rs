@@ -3,7 +3,7 @@ use super::{
 };
 use fehler::throws;
 use serde::Serialize;
-use stable_eyre::eyre::Error;
+use stable_eyre::eyre::{Error, WrapErr};
 use std::fs::File;
 
 #[derive(Debug, Serialize)]
@@ -32,7 +32,11 @@ impl Report {
     pub(super) fn write_high_contributors(&self, config: &ReportConfig, data: &ReportData) {
         let high_contributor_rows = self.high_contributor_rows(&config, &data);
         let output = self.output_dir().join("high-contributors.csv");
-        write_high_contributor_rows(&mut File::create(output)?, &high_contributor_rows)?;
+        write_high_contributor_rows(
+            &mut File::create(output.clone())
+                .wrap_err_with(|| format!("Failed to create output file {:?}", output))?,
+            &high_contributor_rows,
+        )?;
     }
 
     fn high_contributor_rows(
@@ -170,6 +174,11 @@ fn write_high_contributor_rows(
 ) {
     let mut csv = csv::Writer::from_writer(out);
     for row in high_contributor_rows {
-        csv.serialize(row)?;
+        csv.serialize(row).wrap_err_with(|| {
+            format!(
+                "Failed to serialize row while writing high contributors: {:?}",
+                row
+            )
+        })?;
     }
 }
