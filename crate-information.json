@@ -1,0 +1,1347 @@
+[
+  {
+    "name": "addr2line",
+    "version": "0.15.2",
+    "id": "addr2line"
+  },
+  {
+    "name": "adler",
+    "version": "1.0.2",
+    "id": "adler"
+  },
+  {
+    "name": "adler32",
+    "version": "1.2.0",
+    "id": "adler32"
+  },
+  {
+    "name": "ahash",
+    "version": "0.7.4",
+    "id": "ahash"
+  },
+  {
+    "name": "aho-corasick",
+    "version": "0.7.18",
+    "id": "aho_corasick"
+  },
+  {
+    "name": "ansi_term",
+    "version": "0.12.1",
+    "id": "ansi_term"
+  },
+  {
+    "name": "ansi_term",
+    "version": "0.11.0",
+    "id": "ansi_term_0_11_0"
+  },
+  {
+    "name": "anyhow",
+    "version": "1.0.41",
+    "id": "anyhow"
+  },
+  {
+    "name": "approx",
+    "version": "0.5.0",
+    "id": "approx"
+  },
+  {
+    "name": "arc-swap",
+    "version": "0.4.8",
+    "id": "arc_swap"
+  },
+  {
+    "name": "arrayvec",
+    "version": "0.7.1",
+    "id": "arrayvec"
+  },
+  {
+    "name": "async-recursion",
+    "version": "0.3.2",
+    "id": "async_recursion"
+  },
+  {
+    "name": "async-trait",
+    "version": "0.1.50",
+    "id": "async_trait"
+  },
+  {
+    "name": "atty",
+    "version": "0.2.14",
+    "id": "atty"
+  },
+  {
+    "name": "autocfg",
+    "version": "1.0.1",
+    "id": "autocfg"
+  },
+  {
+    "name": "backtrace",
+    "version": "0.3.60",
+    "id": "backtrace"
+  },
+  {
+    "name": "base64",
+    "version": "0.13.0",
+    "id": "base64"
+  },
+  {
+    "name": "bit-set",
+    "version": "0.5.2",
+    "id": "bit_set"
+  },
+  {
+    "name": "bit-vec",
+    "version": "0.6.3",
+    "id": "bit_vec"
+  },
+  {
+    "name": "bitflags",
+    "version": "1.2.1",
+    "id": "bitflags"
+  },
+  {
+    "name": "block-buffer",
+    "version": "0.9.0",
+    "id": "block_buffer"
+  },
+  {
+    "name": "bstr",
+    "version": "0.2.16",
+    "id": "bstr"
+  },
+  {
+    "name": "bytemuck",
+    "version": "1.7.0",
+    "id": "bytemuck"
+  },
+  {
+    "name": "byteorder",
+    "version": "1.4.3",
+    "id": "byteorder"
+  },
+  {
+    "name": "bytes",
+    "version": "1.0.1",
+    "id": "bytes"
+  },
+  {
+    "name": "cc",
+    "version": "1.0.68",
+    "id": "cc"
+  },
+  {
+    "name": "cfg-if",
+    "version": "1.0.0",
+    "id": "cfg_if"
+  },
+  {
+    "name": "cfg-if",
+    "version": "0.1.10",
+    "id": "cfg_if_0_1_10"
+  },
+  {
+    "name": "chrono",
+    "version": "0.4.19",
+    "id": "chrono"
+  },
+  {
+    "name": "clap",
+    "version": "2.33.3",
+    "id": "clap"
+  },
+  {
+    "name": "color_quant",
+    "version": "1.1.0",
+    "id": "color_quant"
+  },
+  {
+    "name": "const_fn",
+    "version": "0.4.8",
+    "id": "const_fn"
+  },
+  {
+    "name": "cpufeatures",
+    "version": "0.1.5",
+    "id": "cpufeatures"
+  },
+  {
+    "name": "crc32fast",
+    "version": "1.2.1",
+    "id": "crc32fast"
+  },
+  {
+    "name": "crossbeam",
+    "version": "0.8.1",
+    "id": "crossbeam"
+  },
+  {
+    "name": "crossbeam-channel",
+    "version": "0.5.1",
+    "id": "crossbeam_channel"
+  },
+  {
+    "name": "crossbeam-deque",
+    "version": "0.8.0",
+    "id": "crossbeam_deque"
+  },
+  {
+    "name": "crossbeam-epoch",
+    "version": "0.9.5",
+    "id": "crossbeam_epoch"
+  },
+  {
+    "name": "crossbeam-queue",
+    "version": "0.3.2",
+    "id": "crossbeam_queue"
+  },
+  {
+    "name": "crossbeam-utils",
+    "version": "0.8.5",
+    "id": "crossbeam_utils"
+  },
+  {
+    "name": "crypto-mac",
+    "version": "0.10.0",
+    "id": "crypto_mac"
+  },
+  {
+    "name": "csv",
+    "version": "1.1.6",
+    "id": "csv"
+  },
+  {
+    "name": "csv-core",
+    "version": "0.1.10",
+    "id": "csv_core"
+  },
+  {
+    "name": "data-encoding",
+    "version": "2.3.2",
+    "id": "data_encoding"
+  },
+  {
+    "name": "deflate",
+    "version": "0.8.6",
+    "id": "deflate"
+  },
+  {
+    "name": "derivative",
+    "version": "2.2.0",
+    "id": "derivative"
+  },
+  {
+    "name": "digest",
+    "version": "0.9.0",
+    "id": "digest"
+  },
+  {
+    "name": "dtoa",
+    "version": "0.4.8",
+    "id": "dtoa"
+  },
+  {
+    "name": "either",
+    "version": "1.6.1",
+    "id": "either"
+  },
+  {
+    "name": "encoding_rs",
+    "version": "0.8.28",
+    "id": "encoding_rs"
+  },
+  {
+    "name": "env_logger",
+    "version": "0.8.4",
+    "id": "env_logger"
+  },
+  {
+    "name": "error-chain",
+    "version": "0.12.4",
+    "id": "error_chain"
+  },
+  {
+    "name": "fallible-iterator",
+    "version": "0.2.0",
+    "id": "fallible_iterator"
+  },
+  {
+    "name": "fallible-streaming-iterator",
+    "version": "0.1.9",
+    "id": "fallible_streaming_iterator"
+  },
+  {
+    "name": "filetime",
+    "version": "0.2.14",
+    "id": "filetime"
+  },
+  {
+    "name": "fixedbitset",
+    "version": "0.4.0",
+    "id": "fixedbitset"
+  },
+  {
+    "name": "flate2",
+    "version": "1.0.20",
+    "id": "flate2"
+  },
+  {
+    "name": "fnv",
+    "version": "1.0.7",
+    "id": "fnv"
+  },
+  {
+    "name": "foreign-types",
+    "version": "0.3.2",
+    "id": "foreign_types"
+  },
+  {
+    "name": "foreign-types-shared",
+    "version": "0.1.1",
+    "id": "foreign_types_shared"
+  },
+  {
+    "name": "form_urlencoded",
+    "version": "1.0.1",
+    "id": "form_urlencoded"
+  },
+  {
+    "name": "futf",
+    "version": "0.1.4",
+    "id": "futf"
+  },
+  {
+    "name": "futures",
+    "version": "0.3.15",
+    "id": "futures"
+  },
+  {
+    "name": "futures-channel",
+    "version": "0.3.15",
+    "id": "futures_channel"
+  },
+  {
+    "name": "futures-core",
+    "version": "0.3.15",
+    "id": "futures_core"
+  },
+  {
+    "name": "futures-executor",
+    "version": "0.3.15",
+    "id": "futures_executor"
+  },
+  {
+    "name": "futures-io",
+    "version": "0.3.15",
+    "id": "futures_io"
+  },
+  {
+    "name": "futures-macro",
+    "version": "0.3.15",
+    "id": "futures_macro"
+  },
+  {
+    "name": "futures-sink",
+    "version": "0.3.15",
+    "id": "futures_sink"
+  },
+  {
+    "name": "futures-task",
+    "version": "0.3.15",
+    "id": "futures_task"
+  },
+  {
+    "name": "futures-util",
+    "version": "0.3.15",
+    "id": "futures_util"
+  },
+  {
+    "name": "generic-array",
+    "version": "0.14.4",
+    "id": "generic_array"
+  },
+  {
+    "name": "getrandom",
+    "version": "0.2.3",
+    "id": "getrandom"
+  },
+  {
+    "name": "getrandom",
+    "version": "0.1.16",
+    "id": "getrandom_0_1_16"
+  },
+  {
+    "name": "gif",
+    "version": "0.11.2",
+    "id": "gif"
+  },
+  {
+    "name": "gimli",
+    "version": "0.24.0",
+    "id": "gimli"
+  },
+  {
+    "name": "glob",
+    "version": "0.3.0",
+    "id": "glob"
+  },
+  {
+    "name": "h2",
+    "version": "0.3.3",
+    "id": "h2"
+  },
+  {
+    "name": "hashbrown",
+    "version": "0.11.2",
+    "id": "hashbrown"
+  },
+  {
+    "name": "hashlink",
+    "version": "0.7.0",
+    "id": "hashlink"
+  },
+  {
+    "name": "hmac",
+    "version": "0.10.1",
+    "id": "hmac"
+  },
+  {
+    "name": "html5ever",
+    "version": "0.25.1",
+    "id": "html5ever"
+  },
+  {
+    "name": "http",
+    "version": "0.2.4",
+    "id": "http"
+  },
+  {
+    "name": "http-body",
+    "version": "0.4.2",
+    "id": "http_body"
+  },
+  {
+    "name": "httparse",
+    "version": "1.4.1",
+    "id": "httparse"
+  },
+  {
+    "name": "httpdate",
+    "version": "1.0.1",
+    "id": "httpdate"
+  },
+  {
+    "name": "humantime",
+    "version": "2.1.0",
+    "id": "humantime"
+  },
+  {
+    "name": "hyper",
+    "version": "0.14.9",
+    "id": "hyper"
+  },
+  {
+    "name": "hyper-tls",
+    "version": "0.5.0",
+    "id": "hyper_tls"
+  },
+  {
+    "name": "idna",
+    "version": "0.2.3",
+    "id": "idna"
+  },
+  {
+    "name": "image",
+    "version": "0.23.14",
+    "id": "image"
+  },
+  {
+    "name": "indexmap",
+    "version": "1.7.0",
+    "id": "indexmap"
+  },
+  {
+    "name": "instant",
+    "version": "0.1.9",
+    "id": "instant"
+  },
+  {
+    "name": "iovec",
+    "version": "0.1.4",
+    "id": "iovec"
+  },
+  {
+    "name": "ipnet",
+    "version": "2.3.1",
+    "id": "ipnet"
+  },
+  {
+    "name": "itertools",
+    "version": "0.10.1",
+    "id": "itertools"
+  },
+  {
+    "name": "itoa",
+    "version": "0.4.7",
+    "id": "itoa"
+  },
+  {
+    "name": "jpeg-decoder",
+    "version": "0.1.22",
+    "id": "jpeg_decoder"
+  },
+  {
+    "name": "lazy_static",
+    "version": "1.4.0",
+    "id": "lazy_static"
+  },
+  {
+    "name": "libc",
+    "version": "0.2.97",
+    "id": "libc"
+  },
+  {
+    "name": "libm",
+    "version": "0.2.1",
+    "id": "libm"
+  },
+  {
+    "name": "libsqlite3-sys",
+    "version": "0.22.2",
+    "id": "libsqlite3_sys"
+  },
+  {
+    "name": "linked-hash-map",
+    "version": "0.5.4",
+    "id": "linked_hash_map"
+  },
+  {
+    "name": "lock_api",
+    "version": "0.4.4",
+    "id": "lock_api"
+  },
+  {
+    "name": "log",
+    "version": "0.4.14",
+    "id": "log"
+  },
+  {
+    "name": "log-mdc",
+    "version": "0.1.0",
+    "id": "log_mdc"
+  },
+  {
+    "name": "log4rs",
+    "version": "1.0.0",
+    "id": "log4rs"
+  },
+  {
+    "name": "mac",
+    "version": "0.1.1",
+    "id": "mac"
+  },
+  {
+    "name": "markup5ever",
+    "version": "0.10.1",
+    "id": "markup5ever"
+  },
+  {
+    "name": "markup5ever_rcdom",
+    "version": "0.1.0",
+    "id": "markup5ever_rcdom"
+  },
+  {
+    "name": "matches",
+    "version": "0.1.8",
+    "id": "matches"
+  },
+  {
+    "name": "matrixmultiply",
+    "version": "0.3.1",
+    "id": "matrixmultiply"
+  },
+  {
+    "name": "md-5",
+    "version": "0.9.1",
+    "id": "md5"
+  },
+  {
+    "name": "memchr",
+    "version": "2.4.0",
+    "id": "memchr"
+  },
+  {
+    "name": "memmap",
+    "version": "0.7.0",
+    "id": "memmap"
+  },
+  {
+    "name": "memoffset",
+    "version": "0.6.4",
+    "id": "memoffset"
+  },
+  {
+    "name": "mime",
+    "version": "0.3.16",
+    "id": "mime"
+  },
+  {
+    "name": "miniz_oxide",
+    "version": "0.4.4",
+    "id": "miniz_oxide"
+  },
+  {
+    "name": "miniz_oxide",
+    "version": "0.3.7",
+    "id": "miniz_oxide_0_3_7"
+  },
+  {
+    "name": "mio",
+    "version": "0.7.13",
+    "id": "mio"
+  },
+  {
+    "name": "nalgebra",
+    "version": "0.27.1",
+    "id": "nalgebra"
+  },
+  {
+    "name": "nalgebra-macros",
+    "version": "0.1.0",
+    "id": "nalgebra_macros"
+  },
+  {
+    "name": "native-tls",
+    "version": "0.2.7",
+    "id": "native_tls"
+  },
+  {
+    "name": "ndarray",
+    "version": "0.15.3",
+    "id": "ndarray"
+  },
+  {
+    "name": "net2",
+    "version": "0.2.37",
+    "id": "net2"
+  },
+  {
+    "name": "new_debug_unreachable",
+    "version": "1.0.4",
+    "id": "debug_unreachable"
+  },
+  {
+    "name": "num",
+    "version": "0.4.0",
+    "id": "num"
+  },
+  {
+    "name": "num-bigint",
+    "version": "0.4.0",
+    "id": "num_bigint"
+  },
+  {
+    "name": "num-complex",
+    "version": "0.4.0",
+    "id": "num_complex"
+  },
+  {
+    "name": "num-integer",
+    "version": "0.1.44",
+    "id": "num_integer"
+  },
+  {
+    "name": "num-iter",
+    "version": "0.1.42",
+    "id": "num_iter"
+  },
+  {
+    "name": "num-rational",
+    "version": "0.4.0",
+    "id": "num_rational"
+  },
+  {
+    "name": "num-rational",
+    "version": "0.3.2",
+    "id": "num_rational_0_3_2"
+  },
+  {
+    "name": "num-traits",
+    "version": "0.2.14",
+    "id": "num_traits"
+  },
+  {
+    "name": "num_cpus",
+    "version": "1.13.0",
+    "id": "num_cpus"
+  },
+  {
+    "name": "object",
+    "version": "0.25.3",
+    "id": "object"
+  },
+  {
+    "name": "once_cell",
+    "version": "1.8.0",
+    "id": "once_cell"
+  },
+  {
+    "name": "opaque-debug",
+    "version": "0.3.0",
+    "id": "opaque_debug"
+  },
+  {
+    "name": "openssl",
+    "version": "0.10.35",
+    "id": "openssl"
+  },
+  {
+    "name": "openssl-probe",
+    "version": "0.1.4",
+    "id": "openssl_probe"
+  },
+  {
+    "name": "openssl-sys",
+    "version": "0.9.65",
+    "id": "openssl_sys"
+  },
+  {
+    "name": "ordered-float",
+    "version": "2.5.1",
+    "id": "ordered_float"
+  },
+  {
+    "name": "parking_lot",
+    "version": "0.11.1",
+    "id": "parking_lot"
+  },
+  {
+    "name": "parking_lot_core",
+    "version": "0.8.3",
+    "id": "parking_lot_core"
+  },
+  {
+    "name": "paste",
+    "version": "1.0.5",
+    "id": "paste"
+  },
+  {
+    "name": "percent-encoding",
+    "version": "2.1.0",
+    "id": "percent_encoding"
+  },
+  {
+    "name": "pest",
+    "version": "2.1.3",
+    "id": "pest"
+  },
+  {
+    "name": "petgraph",
+    "version": "0.6.0",
+    "id": "petgraph"
+  },
+  {
+    "name": "phf",
+    "version": "0.8.0",
+    "id": "phf"
+  },
+  {
+    "name": "phf_codegen",
+    "version": "0.8.0",
+    "id": "phf_codegen"
+  },
+  {
+    "name": "phf_generator",
+    "version": "0.8.0",
+    "id": "phf_generator"
+  },
+  {
+    "name": "phf_shared",
+    "version": "0.8.0",
+    "id": "phf_shared"
+  },
+  {
+    "name": "pin-project",
+    "version": "1.0.7",
+    "id": "pin_project"
+  },
+  {
+    "name": "pin-project-internal",
+    "version": "1.0.7",
+    "id": "pin_project_internal"
+  },
+  {
+    "name": "pin-project-lite",
+    "version": "0.2.7",
+    "id": "pin_project_lite"
+  },
+  {
+    "name": "pin-utils",
+    "version": "0.1.0",
+    "id": "pin_utils"
+  },
+  {
+    "name": "pkg-config",
+    "version": "0.3.19",
+    "id": "pkg_config"
+  },
+  {
+    "name": "png",
+    "version": "0.16.8",
+    "id": "png"
+  },
+  {
+    "name": "postgres",
+    "version": "0.19.1",
+    "id": "postgres"
+  },
+  {
+    "name": "postgres-protocol",
+    "version": "0.6.1",
+    "id": "postgres_protocol"
+  },
+  {
+    "name": "postgres-types",
+    "version": "0.2.1",
+    "id": "postgres_types"
+  },
+  {
+    "name": "ppv-lite86",
+    "version": "0.2.10",
+    "id": "ppv_lite86"
+  },
+  {
+    "name": "precomputed-hash",
+    "version": "0.1.1",
+    "id": "precomputed_hash"
+  },
+  {
+    "name": "proc-macro-hack",
+    "version": "0.5.19",
+    "id": "proc_macro_hack"
+  },
+  {
+    "name": "proc-macro-nested",
+    "version": "0.1.7",
+    "id": "proc_macro_nested"
+  },
+  {
+    "name": "proc-macro2",
+    "version": "1.0.27",
+    "id": "proc_macro2"
+  },
+  {
+    "name": "quick-error",
+    "version": "2.0.1",
+    "id": "quick_error"
+  },
+  {
+    "name": "quote",
+    "version": "1.0.9",
+    "id": "quote"
+  },
+  {
+    "name": "rand",
+    "version": "0.8.4",
+    "id": "rand"
+  },
+  {
+    "name": "rand",
+    "version": "0.7.3",
+    "id": "rand_0_7_3"
+  },
+  {
+    "name": "rand_chacha",
+    "version": "0.3.1",
+    "id": "rand_chacha"
+  },
+  {
+    "name": "rand_chacha",
+    "version": "0.2.2",
+    "id": "rand_chacha_0_2_2"
+  },
+  {
+    "name": "rand_core",
+    "version": "0.6.3",
+    "id": "rand_core"
+  },
+  {
+    "name": "rand_core",
+    "version": "0.5.1",
+    "id": "rand_core_0_5_1"
+  },
+  {
+    "name": "rand_distr",
+    "version": "0.4.1",
+    "id": "rand_distr"
+  },
+  {
+    "name": "rand_hc",
+    "version": "0.3.1",
+    "id": "rand_hc"
+  },
+  {
+    "name": "rand_pcg",
+    "version": "0.2.1",
+    "id": "rand_pcg"
+  },
+  {
+    "name": "rawpointer",
+    "version": "0.2.1",
+    "id": "rawpointer"
+  },
+  {
+    "name": "rayon",
+    "version": "1.5.1",
+    "id": "rayon"
+  },
+  {
+    "name": "rayon-core",
+    "version": "1.9.1",
+    "id": "rayon_core"
+  },
+  {
+    "name": "regex",
+    "version": "1.5.4",
+    "id": "regex"
+  },
+  {
+    "name": "regex-automata",
+    "version": "0.1.10",
+    "id": "regex_automata"
+  },
+  {
+    "name": "regex-syntax",
+    "version": "0.6.25",
+    "id": "regex_syntax"
+  },
+  {
+    "name": "remove_dir_all",
+    "version": "0.5.3",
+    "id": "remove_dir_all"
+  },
+  {
+    "name": "reqwest",
+    "version": "0.11.4",
+    "id": "reqwest"
+  },
+  {
+    "name": "ring",
+    "version": "0.16.20",
+    "id": "ring"
+  },
+  {
+    "name": "rusqlite",
+    "version": "0.25.3",
+    "id": "rusqlite"
+  },
+  {
+    "name": "rustc-demangle",
+    "version": "0.1.20",
+    "id": "rustc_demangle"
+  },
+  {
+    "name": "rustc_version",
+    "version": "0.4.0",
+    "id": "rustc_version"
+  },
+  {
+    "name": "ryu",
+    "version": "1.0.5",
+    "id": "ryu"
+  },
+  {
+    "name": "same-file",
+    "version": "1.0.6",
+    "id": "same_file"
+  },
+  {
+    "name": "scoped_threadpool",
+    "version": "0.1.9",
+    "id": "scoped_threadpool"
+  },
+  {
+    "name": "scopeguard",
+    "version": "1.1.0",
+    "id": "scopeguard"
+  },
+  {
+    "name": "select",
+    "version": "0.5.0",
+    "id": "select"
+  },
+  {
+    "name": "semver",
+    "version": "1.0.3",
+    "id": "semver"
+  },
+  {
+    "name": "semver-parser",
+    "version": "0.10.2",
+    "id": "semver_parser"
+  },
+  {
+    "name": "serde",
+    "version": "1.0.126",
+    "id": "serde"
+  },
+  {
+    "name": "serde-value",
+    "version": "0.7.0",
+    "id": "serde_value"
+  },
+  {
+    "name": "serde_derive",
+    "version": "1.0.126",
+    "id": "serde_derive"
+  },
+  {
+    "name": "serde_json",
+    "version": "1.0.64",
+    "id": "serde_json"
+  },
+  {
+    "name": "serde_urlencoded",
+    "version": "0.7.0",
+    "id": "serde_urlencoded"
+  },
+  {
+    "name": "serde_yaml",
+    "version": "0.8.17",
+    "id": "serde_yaml"
+  },
+  {
+    "name": "sha2",
+    "version": "0.9.5",
+    "id": "sha2"
+  },
+  {
+    "name": "simba",
+    "version": "0.5.1",
+    "id": "simba"
+  },
+  {
+    "name": "siphasher",
+    "version": "0.3.5",
+    "id": "siphasher"
+  },
+  {
+    "name": "slab",
+    "version": "0.4.3",
+    "id": "slab"
+  },
+  {
+    "name": "smallvec",
+    "version": "1.6.1",
+    "id": "smallvec"
+  },
+  {
+    "name": "smawk",
+    "version": "0.3.1",
+    "id": "smawk"
+  },
+  {
+    "name": "socket2",
+    "version": "0.4.0",
+    "id": "socket2"
+  },
+  {
+    "name": "spin",
+    "version": "0.5.2",
+    "id": "spin"
+  },
+  {
+    "name": "standback",
+    "version": "0.2.17",
+    "id": "standback"
+  },
+  {
+    "name": "string_cache",
+    "version": "0.8.1",
+    "id": "string_cache"
+  },
+  {
+    "name": "string_cache_codegen",
+    "version": "0.5.1",
+    "id": "string_cache_codegen"
+  },
+  {
+    "name": "stringprep",
+    "version": "0.1.2",
+    "id": "stringprep"
+  },
+  {
+    "name": "strsim",
+    "version": "0.10.0",
+    "id": "strsim"
+  },
+  {
+    "name": "strsim",
+    "version": "0.8.0",
+    "id": "strsim_0_8_0"
+  },
+  {
+    "name": "subtle",
+    "version": "2.4.0",
+    "id": "subtle"
+  },
+  {
+    "name": "syn",
+    "version": "1.0.73",
+    "id": "syn"
+  },
+  {
+    "name": "tar",
+    "version": "0.4.35",
+    "id": "tar"
+  },
+  {
+    "name": "tempfile",
+    "version": "3.2.0",
+    "id": "tempfile"
+  },
+  {
+    "name": "tendril",
+    "version": "0.4.2",
+    "id": "tendril"
+  },
+  {
+    "name": "termcolor",
+    "version": "1.1.2",
+    "id": "termcolor"
+  },
+  {
+    "name": "textwrap",
+    "version": "0.14.2",
+    "id": "textwrap"
+  },
+  {
+    "name": "textwrap",
+    "version": "0.11.0",
+    "id": "textwrap_0_11_0"
+  },
+  {
+    "name": "thiserror",
+    "version": "1.0.26",
+    "id": "thiserror"
+  },
+  {
+    "name": "thiserror-impl",
+    "version": "1.0.26",
+    "id": "thiserror_impl"
+  },
+  {
+    "name": "thread-id",
+    "version": "3.3.0",
+    "id": "thread_id"
+  },
+  {
+    "name": "thread_local",
+    "version": "1.1.3",
+    "id": "thread_local"
+  },
+  {
+    "name": "threadpool",
+    "version": "1.8.1",
+    "id": "threadpool"
+  },
+  {
+    "name": "tiff",
+    "version": "0.6.1",
+    "id": "tiff"
+  },
+  {
+    "name": "time",
+    "version": "0.2.27",
+    "id": "time"
+  },
+  {
+    "name": "time",
+    "version": "0.1.44",
+    "id": "time_0_1_44"
+  },
+  {
+    "name": "time-macros",
+    "version": "0.1.1",
+    "id": "time_macros"
+  },
+  {
+    "name": "time-macros-impl",
+    "version": "0.1.2",
+    "id": "time_macros_impl"
+  },
+  {
+    "name": "tinyvec",
+    "version": "1.2.0",
+    "id": "tinyvec"
+  },
+  {
+    "name": "tinyvec_macros",
+    "version": "0.1.0",
+    "id": "tinyvec_macros"
+  },
+  {
+    "name": "tokio",
+    "version": "1.8.0",
+    "id": "tokio"
+  },
+  {
+    "name": "tokio-native-tls",
+    "version": "0.3.0",
+    "id": "tokio_native_tls"
+  },
+  {
+    "name": "tokio-postgres",
+    "version": "0.7.2",
+    "id": "tokio_postgres"
+  },
+  {
+    "name": "tokio-util",
+    "version": "0.6.7",
+    "id": "tokio_util"
+  },
+  {
+    "name": "toml",
+    "version": "0.5.8",
+    "id": "toml"
+  },
+  {
+    "name": "tower-service",
+    "version": "0.3.1",
+    "id": "tower_service"
+  },
+  {
+    "name": "tracing",
+    "version": "0.1.26",
+    "id": "tracing"
+  },
+  {
+    "name": "tracing-core",
+    "version": "0.1.18",
+    "id": "tracing_core"
+  },
+  {
+    "name": "traitobject",
+    "version": "0.1.0",
+    "id": "traitobject"
+  },
+  {
+    "name": "try-lock",
+    "version": "0.2.3",
+    "id": "try_lock"
+  },
+  {
+    "name": "typemap",
+    "version": "0.3.3",
+    "id": "typemap"
+  },
+  {
+    "name": "typenum",
+    "version": "1.13.0",
+    "id": "typenum"
+  },
+  {
+    "name": "ucd-trie",
+    "version": "0.1.3",
+    "id": "ucd_trie"
+  },
+  {
+    "name": "unicase",
+    "version": "2.6.0",
+    "id": "unicase"
+  },
+  {
+    "name": "unicode-bidi",
+    "version": "0.3.5",
+    "id": "unicode_bidi"
+  },
+  {
+    "name": "unicode-linebreak",
+    "version": "0.1.1",
+    "id": "unicode_linebreak"
+  },
+  {
+    "name": "unicode-normalization",
+    "version": "0.1.19",
+    "id": "unicode_normalization"
+  },
+  {
+    "name": "unicode-segmentation",
+    "version": "1.8.0",
+    "id": "unicode_segmentation"
+  },
+  {
+    "name": "unicode-width",
+    "version": "0.1.8",
+    "id": "unicode_width"
+  },
+  {
+    "name": "unicode-xid",
+    "version": "0.2.2",
+    "id": "unicode_xid"
+  },
+  {
+    "name": "unsafe-any",
+    "version": "0.4.2",
+    "id": "unsafe_any"
+  },
+  {
+    "name": "untrusted",
+    "version": "0.7.1",
+    "id": "untrusted"
+  },
+  {
+    "name": "url",
+    "version": "2.2.2",
+    "id": "url"
+  },
+  {
+    "name": "utf-8",
+    "version": "0.7.6",
+    "id": "utf8"
+  },
+  {
+    "name": "vec_map",
+    "version": "0.8.2",
+    "id": "vec_map"
+  },
+  {
+    "name": "version_check",
+    "version": "0.9.3",
+    "id": "version_check"
+  },
+  {
+    "name": "walkdir",
+    "version": "2.3.2",
+    "id": "walkdir"
+  },
+  {
+    "name": "want",
+    "version": "0.3.0",
+    "id": "want"
+  },
+  {
+    "name": "weezl",
+    "version": "0.1.5",
+    "id": "weezl"
+  },
+  {
+    "name": "winapi",
+    "version": "0.3.9",
+    "id": "winapi"
+  },
+  {
+    "name": "xattr",
+    "version": "0.2.2",
+    "id": "xattr"
+  },
+  {
+    "name": "xml5ever",
+    "version": "0.16.1",
+    "id": "xml5ever"
+  },
+  {
+    "name": "yaml-rust",
+    "version": "0.4.5",
+    "id": "yaml_rust"
+  }
+]
