@@ -6,7 +6,7 @@ use crate::report::Report;
 use crate::util::percentage;
 use fehler::throws;
 use serde::Deserialize;
-use stable_eyre::eyre::Error;
+use stable_eyre::eyre::{Error, WrapErr};
 
 use super::ReportConfig;
 
@@ -49,22 +49,27 @@ impl Report {
                 config.data_source.number_of_days,
             ),
         )
-        .await?;
+        .await
+        .wrap_err_with(|| format!("Failed to produce input data for {:?}", &repo_participants))?;
 
         tokio::task::spawn_blocking(move || {
             RepoParticipants::parse_participants(&repo_participants)
         })
-        .await??
+        .await
+        .wrap_err("Failed to parse repo participants")??
     }
 }
 
 impl RepoParticipants {
     #[throws]
     fn parse_participants(repo_participants: &Path) -> Self {
-        let mut rdr = csv::Reader::from_path(repo_participants)?;
+        let mut rdr = csv::Reader::from_path(repo_participants).wrap_err_with(|| {
+            format!("Failed to create reader from path {:?}", &repo_participants)
+        })?;
         let mut vec = Vec::new();
         for result in rdr.deserialize() {
-            let record: RepoParticipant = result?;
+            let record: RepoParticipant =
+                result.wrap_err("Failed to deserialize while parsing repo participants")?;
             if !is_robot(&record.participant) {
                 vec.push(record);
             }

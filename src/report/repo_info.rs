@@ -1,6 +1,6 @@
 use fehler::throws;
 use serde::Deserialize;
-use stable_eyre::eyre::Error;
+use stable_eyre::eyre::{Error, WrapErr};
 use std::{collections::HashMap, path::Path};
 
 use crate::{metrics, util::percentage};
@@ -39,19 +39,24 @@ impl Report {
                 config.data_source.number_of_days,
             ),
         )
-        .await?;
+        .await
+        .wrap_err("Failed to produce input data for repo-infos.csv")?;
 
-        tokio::task::spawn_blocking(move || RepoInfos::parse_repo_infos(&repo_infos)).await??
+        tokio::task::spawn_blocking(move || RepoInfos::parse_repo_infos(&repo_infos.clone()))
+            .await
+            .wrap_err("Failed to parse repo information")??
     }
 }
 
 impl RepoInfos {
     #[throws]
     fn parse_repo_infos(repo_infos: &Path) -> RepoInfos {
-        let mut rdr = csv::Reader::from_path(repo_infos)?;
+        let mut rdr = csv::Reader::from_path(repo_infos)
+            .wrap_err_with(|| format!("Failed to create reader from path: {:?}", &repo_infos))?;
         let mut map = HashMap::new();
         for result in rdr.deserialize() {
-            let record: RepoInfo = result?;
+            let record: RepoInfo =
+                result.wrap_err("Failed to deserialize while parsing repo info")?;
             map.insert(record.repo.clone(), record);
         }
         RepoInfos { repos: map }

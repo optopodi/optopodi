@@ -1,6 +1,6 @@
 use clap::{AppSettings, Clap};
 use fehler::throws;
-use stable_eyre::eyre::Error;
+use stable_eyre::eyre::{Error, WrapErr};
 use std::path::PathBuf;
 
 mod metrics;
@@ -31,21 +31,28 @@ enum Cmd {
 #[throws]
 #[tokio::main]
 async fn main() {
-    stable_eyre::install()?;
+    stable_eyre::install().wrap_err("Failed to install `stable_eyre`")?;
     env_logger::init();
 
-    let token = token::github_token()?;
+    let token = token::github_token().wrap_err("Failed to initialize GitHub Token")?;
 
     // initialize static octocrab API -- call `octocrab::instance()` anywhere to retrieve instance
-    octocrab::initialise(octocrab::Octocrab::builder().personal_token(token))?;
+    octocrab::initialise(octocrab::Octocrab::builder().personal_token(token))
+        .wrap_err("Failed to initialize static instance of Octocrab")?;
 
     let cli = OctoCli::parse();
 
     match cli.cmd {
         Cmd::Report { directory } => {
-            Report::new(PathBuf::from(directory), cli.replay_graphql)
+            Report::new(PathBuf::from(&directory), cli.replay_graphql)
                 .run()
-                .await?;
+                .await
+                .wrap_err_with(|| {
+                    format!(
+                        "Failed to generate new report from directory {}",
+                        &directory
+                    )
+                })?;
         }
     }
 }

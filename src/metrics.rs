@@ -44,7 +44,7 @@ pub fn run_producer(
     tokio::spawn(async move {
         if let Err(e) = producer.producer_task(tx).await {
             println!("Encountered an error while collecting data: {}", e);
-        };
+        }
     });
 
     (column_names, rx)
