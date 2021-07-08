@@ -12,21 +12,21 @@ Adopted from the [Mentored Sprints](https://www.mentored-sprints.dev) discord se
 
 Examples of behaviours that contribute to creating a positive environment:
 
-*Being friendly and patient  
-*Using welcoming and inclusive language  
-*Being respectful of differing viewpoints and experiences
-*Gracefully accepting constructive criticism
-*Focusing on what is best for the community
-*Showing empathy towards other community members
-*Examples of unacceptable behaviour by participants include:
+* Being friendly and patient
+* Using welcoming and inclusive language
+* eing respectful of differing viewpoints and experiences
+* Gracefully accepting constructive criticism
+* Focusing on what is best for the community
+* Showing empathy towards other community members
+* Examples of unacceptable behaviour by participants include:
 
-*The use of sexualised or violent language or imagery
-*Unwelcome sexual attention or advances
-*Trolling, insulting/derogatory comments, and personal or political attacks
-*Public or private harassment. If someone asks you to stop, then stop.
-*Publishing others' private information, such as a physical or electronic address, without explicit permission
-*Advocating for, or encouraging, any of the above behaviour
-*Other conduct which could reasonably be considered inappropriate in a professional setting
+* The use of sexualised or violent language or imagery
+* Unwelcome sexual attention or advances
+* Trolling, insulting/derogatory comments, and personal or political attacks
+* Public or private harassment. If someone asks you to stop, then stop.
+* Publishing others' private information, such as a physical or electronic address, without explicit permission
+* Advocating for, or encouraging, any of the above behaviour
+* Other conduct which could reasonably be considered inappropriate in a professional setting
 
 The following are examples of good choices during collaboration with your team and choices to avoid.  The Recurse Center did such an excellent job creating these examples that addition explanation is not needed.
 
