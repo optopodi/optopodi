@@ -1,8 +1,9 @@
-use super::Graphql;
-use chrono::{Duration, Utc};
 use fehler::throws;
 use graphql_client::GraphQLQuery;
 use stable_eyre::eyre::Error;
+use toml::value::Datetime;
+
+use super::Graphql;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -74,19 +75,12 @@ pub(super) async fn count_pull_requests(
     graphql: &mut Graphql,
     org_name: &str,
     repo_name: &str,
-    time_period: Duration,
+    start_date: &Datetime,
+    end_date: &Datetime,
 ) -> usize {
-    // get date string to match GitHub's PR query format for `created` field
-    // i.e., "2021-05-18UTC" turns into "2021-05-18"
-    let date_str = chrono::NaiveDate::parse_from_str(
-        &format!("{}", (Utc::now() - time_period).date())[..],
-        "%FUTC",
-    )
-    .unwrap();
-
     let query_string = format!(
-        r#"repo:{}/{} is:pr created:>{}"#,
-        org_name, repo_name, date_str,
+        r#"repo:{}/{} is:pr created:{}..{}"#,
+        org_name, repo_name, start_date, end_date
     );
 
     let response = graphql

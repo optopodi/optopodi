@@ -36,7 +36,8 @@ impl Report {
                 graphql,
                 config.github.org.clone(),
                 config.github.repos.clone(),
-                config.data_source.number_of_days,
+                config.data_source.start_date.clone(),
+                config.data_source.end_date.clone(),
             ),
         )
         .await
