@@ -14,7 +14,7 @@ Examples of behaviours that contribute to creating a positive environment:
 
 * Being friendly and patient  
 * Using welcoming and inclusive language  
-* eing respectful of differing viewpoints and experiences  
+* Being respectful of differing viewpoints and experiences  
 * Gracefully accepting constructive criticism
 * Focusing on what is best for the community
 * Showing empathy towards other community members
