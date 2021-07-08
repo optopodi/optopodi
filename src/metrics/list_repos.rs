@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use chrono::Duration;
 use stable_eyre::eyre;
 use tokio::sync::mpsc::Sender;
+use toml::value::Datetime;
 
 use super::{util, Graphql, Producer};
 
@@ -10,7 +10,8 @@ pub struct ListReposForOrg {
     graphql: Graphql,
     org_name: String,
     repo_names: Vec<String>,
-    number_of_days: i64,
+    start_date: Datetime,
+    end_date: Datetime,
 }
 
 impl ListReposForOrg {
@@ -18,13 +19,15 @@ impl ListReposForOrg {
         graphql: Graphql,
         org_name: String,
         repo_names: Vec<String>,
-        number_of_days: i64,
+        start_date: Datetime,
+        end_date: Datetime,
     ) -> Self {
         ListReposForOrg {
             graphql,
             org_name,
             repo_names,
-            number_of_days,
+            start_date,
+            end_date,
         }
     }
 }
@@ -41,7 +44,8 @@ impl Producer for ListReposForOrg {
                 &mut self.graphql,
                 &self.org_name,
                 &repo,
-                Duration::days(self.number_of_days),
+                &self.start_date,
+                &self.end_date,
             )
             .await?;
             tx.send(vec![repo.to_owned(), count_prs.to_string()])

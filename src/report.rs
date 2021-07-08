@@ -5,6 +5,7 @@ use std::{fs::File, path::PathBuf};
 use fehler::throws;
 use serde::Deserialize;
 use stable_eyre::eyre::{self, Error, WrapErr};
+use toml::value::Datetime;
 
 use crate::metrics::Consumer;
 use crate::metrics::{self, Graphql};
@@ -44,7 +45,8 @@ struct GithubConfig {
 
 #[derive(Deserialize, Debug)]
 struct DataSourceConfig {
-    number_of_days: i64,
+    start_date: Datetime,
+    end_date: Datetime,
 }
 
 #[derive(Deserialize, Debug)]

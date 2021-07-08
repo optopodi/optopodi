@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use async_trait::async_trait;
-use chrono::{Duration, Utc};
 use fehler::throws;
 use graphql_client::GraphQLQuery;
 use stable_eyre::eyre;
 use stable_eyre::eyre::Error;
 use tokio::sync::mpsc::Sender;
+use toml::value::Datetime;
 
 use super::{Graphql, Producer};
 
@@ -14,7 +14,8 @@ pub struct RepoParticipants {
     graphql: Graphql,
     org_name: String,
     repo_names: Vec<String>,
-    number_of_days: i64,
+    start_date: Datetime,
+    end_date: Datetime,
 }
 
 impl RepoParticipants {
@@ -22,13 +23,15 @@ impl RepoParticipants {
         graphql: Graphql,
         org_name: String,
         repo_names: Vec<String>,
-        number_of_days: i64,
+        start_date: Datetime,
+        end_date: Datetime,
     ) -> Self {
         Self {
             graphql,
             org_name,
             repo_names,
-            number_of_days,
+            start_date,
+            end_date,
         }
     }
 }
@@ -53,7 +56,8 @@ impl Producer for RepoParticipants {
                 &mut self.graphql,
                 &self.org_name,
                 repo_name,
-                Duration::days(self.number_of_days),
+                &self.start_date,
+                &self.end_date,
             )
             .await?;
 
@@ -113,16 +117,9 @@ async fn pr_participants(
     graphql: &mut Graphql,
     org_name: &str,
     repo_name: &str,
-    time_period: Duration,
+    start_date: &Datetime,
+    end_date: &Datetime,
 ) -> Vec<(String, ParticipantCounts)> {
-    // get date string to match GitHub's PR query format for `created` field
-    // i.e., "2021-05-18UTC" turns into "2021-05-18"
-    let date_str = chrono::NaiveDate::parse_from_str(
-        &format!("{}", (Utc::now() - time_period).date())[..],
-        "%FUTC",
-    )
-    .unwrap();
-
     // Tracks, for each github login, how many PRs they participated in on this repository.
     let mut counts: HashMap<String, ParticipantCounts> = HashMap::new();
 
@@ -133,10 +130,11 @@ async fn pr_participants(
             .query(PrsAndParticipants)
             .execute(pap::Variables {
                 query_string: format!(
-                    r#"repo:{org_name}/{repo_name} is:pr created:>{date_str}"#,
+                    r#"repo:{org_name}/{repo_name} is:pr created:{start_date}..{end_date}"#,
                     org_name = org_name,
                     repo_name = repo_name,
-                    date_str = date_str,
+                    start_date = start_date,
+                    end_date = end_date,
                 ),
                 after_cursor,
             })
