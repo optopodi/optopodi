@@ -10,7 +10,7 @@ We follow the [Rust code of conduct](https://www.rust-lang.org/policies/code-of-
 
 Adopted from the [Mentored Sprints](https://www.mentored-sprints.dev) discord server and [The Recurse Social Rules](https://www.recurse.com/social-rules) these guidelines extend the [Rust CoC](https://www.rust-lang.org/policies/code-of-conduct) in ways that are actionable and clear examples to follow for the Optopodi team.
 
-Examples of behaviours that contribute to creating a positive environment:
+Examples of unacceptable behaviors by participants include:
 
 * Being friendly and patient  
 * Using welcoming and inclusive language  
