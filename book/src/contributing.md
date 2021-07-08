@@ -42,24 +42,24 @@ Consider these guidelines to be lightweight. You should not be afraid of breakin
 
 *No well-actually’s*
 
->Alice: I just installed Linux on my computer!
->Bob: It’s actually called GNU/Linux.
+> Alice: I just installed Linux on my computer!
+> Bob: It’s actually called GNU/Linux.
 
 *No feigning surprise*
 
->Dan: What’s the command line?
->Carol: Wait, you’ve never used the command line?
+> Dan: What’s the command line?
+> Carol: Wait, you’ve never used the command line?
 
 *No backseat driving*
 
->Bob: What’s the name of the string copy function?
->Alice: Strncpy.
->Eve: (injecting into an existing conversation) You should use strlcpy. It’s safer.
+> Bob: What’s the name of the string copy function?
+> Alice: Strncpy.
+> Eve: (injecting into an existing conversation) You should use strlcpy. It’s safer.
 
 *No subtle -isms*
 
->Carol: Windows is hard to use.
->Bob: No way. Windows is so easy to use that even my mom can use it.
+> Carol: Windows is hard to use.
+> Bob: No way. Windows is so easy to use that even my mom can use it.
 
 **And finally, not every comment requires a response.**
 
