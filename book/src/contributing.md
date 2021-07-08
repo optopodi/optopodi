@@ -64,8 +64,6 @@ Bob: No way. Windows is so easy to use that even my mom can use it.
 
 **And finally, not every comment requires a response.**
 
-We follow the [Rust code of conduct](https://www.rust-lang.org/policies/code-of-conduct). Please report any concerns to a [Lead][leads].
-
 ## Chat
 
 We chat on the github-metrics Zulip instance, found at <https://github-metrics.zulipchat.com/>.
