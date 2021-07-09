@@ -29,7 +29,7 @@ Examples of unacceptable behavior by participants include:
 > * Advocating for, or encouraging, any of the above behaviour
 > * Other conduct which could reasonably be considered inappropriate in a professional setting
 
-The following are examples of good choices during collaboration with your team and choices to avoid.  The Recurse Center did such an excellent job creating these examples that addition explanation is not needed.
+The following are examples of good choices during collaboration with your team and choices to avoid.  The Recurse Center did such an excellent job creating these examples that additional explanation is not needed.
 
 **These guidelines aren’t for punishing people.**
 
