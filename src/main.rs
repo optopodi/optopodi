@@ -14,7 +14,7 @@ use crate::report::Report;
 #[clap(setting = AppSettings::ColoredHelp)]
 #[clap(name = "optopodi")]
 struct OctoCli {
-    /// Load the saved results of grapql queries from disk (if they are present).
+    /// Load the saved results of graphql queries from disk (if they are present).
     #[clap(long)]
     replay_graphql: bool,
 

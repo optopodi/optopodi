@@ -1,9 +1,16 @@
 use super::{Report, ReportConfig, ReportData};
 use crate::util::percentage;
+
+use std::{
+    fs::File,
+    io::Read,
+    path::{Path, PathBuf},
+};
+
 use fehler::throws;
+use rust_playground_top_crates::Modifications;
 use serde::Deserialize;
 use stable_eyre::eyre::{Error, WrapErr};
-use std::{fs::File, path::Path};
 
 #[derive(Debug)]
 pub(super) struct TopCrateInfo {
@@ -16,14 +23,19 @@ impl Report {
     #[throws]
     pub(super) async fn top_crates(&self, _config: &ReportConfig) -> Vec<TopCrateInfo> {
         let path = self.data_dir.join("crate-information.json");
-        if path.exists() {
-            tokio::task::spawn_blocking(move || load_top_crates(&path))
+
+        // if the `crate-information.json` doesn't exist, generate it
+        if !path.exists() {
+            let copy_data_dir = self.data_dir.to_path_buf();
+            tokio::task::spawn_blocking(move || generate_crate_information(&copy_data_dir))
                 .await
-                .wrap_err("Failed to load top crates")??
-        } else {
-            log::warn!("no crate-information.json file found");
-            vec![]
+                .wrap_err("Failed to spawn blocking task")?
+                .wrap_err("Failed to generate top-crates files")?;
         }
+
+        tokio::task::spawn_blocking(move || load_top_crates(&path))
+            .await
+            .wrap_err("Failed to load top crates")??
     }
 
     #[throws]
@@ -81,4 +93,26 @@ fn load_top_crates(path: &Path) -> Vec<TopCrateInfo> {
         vec.push(TopCrateInfo { name, version, id });
     }
     vec
+}
+
+#[throws]
+pub fn generate_crate_information(base_directory: &PathBuf) {
+    let mut f = File::open("crate-modifications.toml")
+        .wrap_err("unable to open crate modifications file")?;
+
+    let mut d = Vec::new();
+
+    f.read_to_end(&mut d)
+        .wrap_err("unable to read crate modifications file")?;
+
+    let modifications: Modifications =
+        toml::from_slice(&d).wrap_err("unable to parse crate modifications file")?;
+
+    let (_, infos) = rust_playground_top_crates::generate_info(&modifications);
+
+    let path = base_directory.join("crate-information.json");
+    let mut f =
+        File::create(&path).wrap_err_with(|| format!("Unable to create {}", path.display()))?;
+    serde_json::to_writer_pretty(&mut f, &infos)
+        .wrap_err_with(|| format!("Unable to write {}", path.display()))?;
 }
