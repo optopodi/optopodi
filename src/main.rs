@@ -6,7 +6,6 @@ use std::path::PathBuf;
 mod metrics;
 mod report;
 mod token;
-mod top_crates;
 mod util;
 
 use crate::report::Report;
@@ -15,7 +14,7 @@ use crate::report::Report;
 #[clap(setting = AppSettings::ColoredHelp)]
 #[clap(name = "optopodi")]
 struct OctoCli {
-    /// Load the saved results of grapql queries from disk (if they are present).
+    /// Load the saved results of graphql queries from disk (if they are present).
     #[clap(long)]
     replay_graphql: bool,
 
@@ -45,15 +44,6 @@ async fn main() {
 
     match cli.cmd {
         Cmd::Report { directory } => {
-            let copy_dir = directory.clone();
-
-            tokio::task::spawn_blocking(move || -> std::io::Result<()> {
-                top_crates::generate(PathBuf::from(&copy_dir))
-            })
-            .await
-            .expect("Task panicked")
-            .expect("Failed to generate");
-
             Report::new(PathBuf::from(&directory), cli.replay_graphql)
                 .run()
                 .await
