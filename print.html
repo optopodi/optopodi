@@ -170,8 +170,9 @@
 </li>
 <li>Optionally, create a <code>crate-information.json</code> file in <code>$DIR</code>.
 <ul>
-<li>This defines notable crates from the ecosystem that you wish to analyze. You can generate this file using the <a href="https://github.com/integer32llc/rust-playground/tree/master/top-crates">top-crates</a> crate from the Rust playground.</li>
-<li>If you don't have such a file, we'll skip this step.</li>
+<li>This defines notable crates from the ecosystem that you wish to analyze.</li>
+<li>If you don't have such a file, it will be generated for you. However, if the file is present, Optopodi will make use of the existing <code>crate-information.json</code> for reproducibility.</li>
+<li>You can generate this file using the <a href="https://github.com/integer32llc/rust-playground/tree/master/top-crates">top-crates</a> crate from the Rust playground if you wish to produce it manually.</li>
 </ul>
 </li>
 <li>Run <code>cargo run -- report $DIR</code>. This will populate the following subdirectories:
@@ -179,6 +180,7 @@
 <li><code>$DIR/graphql</code> -- saved results of graphql queries. These can be &quot;replayed&quot; later to avoid hitting the network. This makes things faster and avoids generating tons of github API calls when debugging (which can easily exceed your quota).</li>
 <li><code>$DIR/inputs</code> -- intermediate CSV files containing data extracted from the graphql queries.</li>
 <li><code>$DIR/outputs</code> -- contains the CSV files you are meant to look at.</li>
+<li><code>$DIR/crate-information.json</code> will be generated if absent. This defines notable crates from the ecosystem that you wish to analyze.</li>
 </ul>
 </li>
 <li>You can run with the <code>--replay-graphql</code> setting to re-use saved graphql queries: <code>cargo run -- --replay-graphql report $DIR</code>
