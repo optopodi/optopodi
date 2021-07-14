@@ -2,16 +2,14 @@ use super::{Report, ReportConfig, ReportData};
 use crate::util::percentage;
 
 use std::{
-    collections::BTreeMap,
     fs::File,
-    io::{Read, Write},
+    io::Read,
     path::{Path, PathBuf},
 };
 
 use fehler::throws;
-use rust_playground_top_crates::*;
+use rust_playground_top_crates::Modifications;
 use serde::Deserialize;
-use serde::Serialize;
 use stable_eyre::eyre::{Error, WrapErr};
 
 #[derive(Debug)]
@@ -97,43 +95,11 @@ fn load_top_crates(path: &Path) -> Vec<TopCrateInfo> {
     vec
 }
 
-/// A Cargo.toml file.
-#[derive(Serialize)]
-struct TomlManifest {
-    package: TomlPackage,
-    profile: Profiles,
-    #[serde(serialize_with = "toml::ser::tables_last")]
-    dependencies: BTreeMap<String, DependencySpec>,
-}
-
-/// Header of Cargo.toml file.
-#[derive(Serialize)]
-struct TomlPackage {
-    name: String,
-    version: String,
-    authors: Vec<String>,
-    resolver: String,
-}
-
-/// A profile section in a Cargo.toml file
-#[derive(Serialize)]
-#[serde(rename_all = "kebab-case")]
-struct Profile {
-    codegen_units: u32,
-    incremental: bool,
-}
-
-/// Available profile types
-#[derive(Serialize)]
-struct Profiles {
-    dev: Profile,
-    release: Profile,
-}
-
 #[throws]
 pub fn generate_crate_information(base_directory: &PathBuf) {
     let mut f = File::open("crate-modifications.toml")
         .wrap_err("unable to open crate modifications file")?;
+
     let mut d = Vec::new();
 
     f.read_to_end(&mut d)
@@ -142,41 +108,11 @@ pub fn generate_crate_information(base_directory: &PathBuf) {
     let modifications: Modifications =
         toml::from_slice(&d).wrap_err("unable to parse crate modifications file")?;
 
-    let (dependencies, infos) = rust_playground_top_crates::generate_info(&modifications);
-
-    // Construct playground's Cargo.toml.
-    let manifest = TomlManifest {
-        package: TomlPackage {
-            name: "playground".to_owned(),
-            version: "0.0.1".to_owned(),
-            authors: vec!["The Rust Playground".to_owned()],
-            resolver: "2".to_owned(),
-        },
-        profile: Profiles {
-            dev: Profile {
-                codegen_units: 1,
-                incremental: false,
-            },
-            release: Profile {
-                codegen_units: 1,
-                incremental: false,
-            },
-        },
-        dependencies,
-    };
-
-    let cargo_toml = base_directory.join("Cargo.toml");
-    write_manifest(manifest, &cargo_toml);
+    let (_, infos) = rust_playground_top_crates::generate_info(&modifications);
 
     let path = base_directory.join("crate-information.json");
-    let mut f = File::create(&path)
-        .unwrap_or_else(|e| panic!("Unable to create {}: {}", path.display(), e));
+    let mut f =
+        File::create(&path).wrap_err_with(|| format!("Unable to create {}", path.display()))?;
     serde_json::to_writer_pretty(&mut f, &infos)
-        .unwrap_or_else(|e| panic!("Unable to write {}: {}", path.display(), e));
-}
-
-fn write_manifest(manifest: TomlManifest, path: impl AsRef<Path>) {
-    let mut f = File::create(path).expect("Unable to create Cargo.toml");
-    let content = toml::to_vec(&manifest).expect("Couldn't serialize TOML");
-    f.write_all(&content).expect("Couldn't write Cargo.toml");
+        .wrap_err_with(|| format!("Unable to write {}", path.display()))?;
 }
