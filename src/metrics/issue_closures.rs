@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use fehler::throws;
-use graphql_client::GraphQLQuery;
 use log::debug;
 use stable_eyre::eyre;
 use stable_eyre::eyre::Error;
@@ -75,14 +74,6 @@ impl Producer for IssueClosures {
     }
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "gql/schema.docs.graphql",
-    query_path = "gql/issue_search.graphql",
-    response_derives = "Serialize,Debug"
-)]
-pub struct IssueSearch;
-
 #[derive(Default, Debug)]
 struct IssueClosuresCount {
     opened: usize,
@@ -113,48 +104,22 @@ async fn count_issue_closures(
         state: &str,
     ) -> Result<usize, eyre::Error> {
         debug!("Fetching issue closure info for {}/{}", org_name, repo_name);
-        let mut after_cursor = None;
-        let mut count = 0;
-        loop {
-            let response = graphql
-                .query(IssueSearch)
-                .execute(issue_search::Variables {
-                    query_string: format!(
-                        r#"repo:{org_name}/{repo_name} is:issue {state}:{start_date}..{end_date}"#,
-                        org_name = org_name,
-                        repo_name = repo_name,
-                        start_date = start_date,
-                        end_date = end_date,
-                        state = state,
-                    ),
-                    after_cursor,
-                })
-                .await?;
-            let response_data = response.data.expect("missing response data");
-            let has_next_page = response_data.search.page_info.has_next_page;
-            let new_after_cursor = response_data.search.page_info.end_cursor;
-            count += response_data
-                .search
-                .edges
-                .into_iter()
-                .flatten()
-                .flatten()
-                .flat_map(|e| e.node)
-                .filter_map(|e| match e {
-                    issue_search::IssueSearchSearchEdgesNode::Issue(i) => Some(i),
-                    e => {
-                        debug_assert!(false, "Expected only issues. Found: {:?}", e);
-                        None
-                    }
-                })
-                .count();
-            if has_next_page {
-                after_cursor = new_after_cursor;
-            } else {
-                break;
-            }
-        }
-        Ok(count)
+        let response = graphql
+            .query(super::util::CountPullRequests)
+            .execute(super::util::count_pull_requests::Variables {
+                query_string: format!(
+                    r#"repo:{org_name}/{repo_name} is:issue {state}:{start_date}..{end_date}"#,
+                    org_name = org_name,
+                    repo_name = repo_name,
+                    start_date = start_date,
+                    end_date = end_date,
+                    state = state,
+                ),
+            })
+            .await?;
+
+        let response_data = response.data.expect("missing response data");
+        Ok(response_data.search.issue_count as usize)
     }
 
     let opened = count(

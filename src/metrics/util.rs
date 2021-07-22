@@ -62,7 +62,7 @@ pub async fn all_repos(graphql: &mut Graphql, org: &str) -> Vec<String> {
     query_path = "gql/count_pull_requests.graphql",
     response_derives = "Serialize,Debug"
 )]
-struct CountPullRequests;
+pub(crate) struct CountPullRequests;
 
 /// count the number of pull requests created in the given time period for the given repository within the given GitHub organization
 ///
