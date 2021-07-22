@@ -59,10 +59,10 @@ pub async fn all_repos(graphql: &mut Graphql, org: &str) -> Vec<String> {
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "gql/schema.docs.graphql",
-    query_path = "gql/count_pull_requests.graphql",
+    query_path = "gql/count_issues.graphql",
     response_derives = "Serialize,Debug"
 )]
-struct CountPullRequests;
+pub(crate) struct CountIssues;
 
 /// count the number of pull requests created in the given time period for the given repository within the given GitHub organization
 ///
@@ -84,8 +84,8 @@ pub(super) async fn count_pull_requests(
     );
 
     let response = graphql
-        .query(CountPullRequests)
-        .execute(count_pull_requests::Variables { query_string })
+        .query(CountIssues)
+        .execute(count_issues::Variables { query_string })
         .await?;
     let response_data = response.data.expect("missing response data");
     let count = response_data.search.issue_count;

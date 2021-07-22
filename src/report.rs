@@ -11,6 +11,7 @@ use crate::metrics::Consumer;
 use crate::metrics::{self, Graphql};
 
 mod high_contributor;
+mod issue_closure;
 mod repo_info;
 mod repo_participant;
 mod top_crates;
@@ -35,6 +36,7 @@ pub struct ReportData {
     repo_participants: repo_participant::RepoParticipants,
     repo_infos: repo_info::RepoInfos,
     top_crates: Vec<top_crates::TopCrateInfo>,
+    issue_closures: Vec<issue_closure::IssueClosure>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -110,6 +112,10 @@ impl Report {
                 .repo_infos(&config)
                 .await
                 .wrap_err("Failed to gather Repo Infos")?,
+            issue_closures: self
+                .issue_closures(&config)
+                .await
+                .wrap_err("Failed to gather issue closure info")?,
         });
 
         tokio::task::spawn_blocking(move || -> eyre::Result<()> {
@@ -117,6 +123,8 @@ impl Report {
                 .wrap_err("Failed to write Top Crates")?;
             self.write_high_contributors(&config, &data)
                 .wrap_err("Failed to write High Contributors")?;
+            self.write_issue_closures(&config, &data)
+                .wrap_err("Failed to write issue closures")?;
             Ok(())
         })
         .await
