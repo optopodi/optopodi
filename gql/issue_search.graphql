@@ -1,0 +1,17 @@
+query IssueSearch($query_string: String!, $after_cursor: String) {
+  search(first: 100, query: $query_string, type: ISSUE, after: $after_cursor) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        __typename
+        ... on Issue {
+          number
+          title
+        }
+      }
+    }
+  }
+}
