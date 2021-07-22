@@ -105,8 +105,8 @@ async fn count_issue_closures(
     ) -> Result<usize, eyre::Error> {
         debug!("Fetching issue closure info for {}/{}", org_name, repo_name);
         let response = graphql
-            .query(super::util::CountPullRequests)
-            .execute(super::util::count_pull_requests::Variables {
+            .query(super::util::CountIssues)
+            .execute(super::util::count_issues::Variables {
                 query_string: format!(
                     r#"repo:{org_name}/{repo_name} is:issue {state}:{start_date}..{end_date}"#,
                     org_name = org_name,

@@ -1,4 +1,4 @@
-query CountPullRequests($query_string: String!) {
+query CountIssues($query_string: String!) {
   search(query: $query_string, type: ISSUE, last: 1) {
     issueCount
   }
