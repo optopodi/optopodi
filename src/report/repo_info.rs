@@ -17,9 +17,9 @@ pub struct RepoInfos {
 pub struct RepoInfo {
     #[serde(rename = "#")]
     pub row: usize,
-    #[serde(rename = "Repository Name")]
+    #[serde(rename = "Repository")]
     pub repo: String,
-    #[serde(rename = "# of PRs")]
+    #[serde(rename = "PRs Opened")]
     pub num_prs: u64,
 }
 
@@ -106,7 +106,7 @@ impl Report {
         let graphql = self.graphql("issue-closure");
         self.produce_input(
             &issue_closure,
-            metrics::IssueClosures::new(
+            metrics::ListReposForOrg::new(
                 graphql.clone(),
                 config.github.org.clone(),
                 config.github.repos.clone(),
