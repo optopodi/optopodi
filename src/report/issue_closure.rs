@@ -1,11 +1,13 @@
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
+
 use fehler::throws;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use stable_eyre::eyre::{Error, WrapErr};
 
 use super::{Report, ReportConfig, ReportData};
-
-use std::fs::File;
-use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct IssueClosure {
@@ -41,7 +43,6 @@ impl IssueClosure {
 impl Report {
     #[throws]
     pub(super) fn write_issue_closures(&self, _config: &ReportConfig, data: &ReportData) {
-        use std::io::Write;
         let output = self.output_dir().join("issue-closures.csv");
         let output = &mut File::create(output)?;
         writeln!(output, "Organization,Repo,Opened,Closed,Delta,Time Period").unwrap();
@@ -59,5 +60,22 @@ impl Report {
             )
             .unwrap();
         }
+    }
+
+    #[throws]
+    pub(super) async fn issue_closures(&self, _config: &ReportConfig) -> Vec<IssueClosure> {
+        debug!("Finding issue closures...");
+        // path to relevant input data
+        let repo_info = self.input_dir().join("repo-infos.csv");
+
+        // `IssueClosure` does not need to 'produce' here, since the necessary
+        // data for this report is generated with `metrics::ListReposForOrg`.
+        // Thus, no need to call `self.produce_input`
+        //
+        // See: `Report::repo_infos` method in `src/report/repo_info.rs`
+
+        IssueClosure::parse_csv(&repo_info.clone())
+            .await
+            .wrap_err("Failed to parse issue closure information")?
     }
 }
