@@ -6,7 +6,7 @@ use toml::value::Datetime;
 
 use super::Graphql;
 
-/// A struct representation of the GraphQL query found in [`gql/organization_repos.graphql`](~/gql/organization_repos.graphql)
+/// A struct representation of the GraphQL query found in `gql/organization_repos.graphql`
 ///
 /// Used to gather relevant data for each repository within a specific GitHub organization.
 #[derive(GraphQLQuery)]
@@ -117,7 +117,7 @@ pub(super) async fn count_pull_requests(
     CountIssues::query(graphql, query_string).await?
 }
 
-/// count the number of issues opened and closed in a given time period
+/// count the number of issues with the given state in a given time period
 ///
 /// # Arguments
 /// - `graphql` — A `graphql_client::GraphQLQuery` instance to make a GQL query

@@ -181,8 +181,8 @@ impl Report {
         let mut config: ReportConfig =
             toml::from_str(&report_config_bytes).wrap_err("Failed to parse Report Config")?;
 
-        // if user omitted the `repos = [ ... ]` property under the `[github]` entry,
-        // then assume they wish to analyze all repositories within the specified `organization`
+        // if user specified an empty list of repos in `report.toml`, then assume
+        // they wish to analyze all repositories within the specified `organization`
         if config.github.repos.is_empty() {
             let graphql = &mut self.graphql("all-repos");
             config.github.repos = metrics::all_repos(graphql, &config.github.org)
