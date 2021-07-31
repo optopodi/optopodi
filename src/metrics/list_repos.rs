@@ -34,6 +34,18 @@ impl ListReposForOrg {
     }
 }
 
+impl ListReposForOrg {
+    fn make_repo(&self, repo_name: &str) -> Repo {
+        Repo {
+            graphql: self.graphql.clone(),
+            org_name: self.org_name.clone(),
+            repo_name: repo_name.to_string(),
+            start_date: self.start_date.clone(),
+            end_date: self.end_date.clone(),
+        }
+    }
+}
+
 #[async_trait]
 impl Producer for ListReposForOrg {
     fn column_names(&self) -> Vec<String> {
@@ -49,28 +61,15 @@ impl Producer for ListReposForOrg {
     }
 
     async fn producer_task(mut self, tx: Sender<Vec<String>>) -> Result<(), eyre::Error> {
-        for repo in &self.repo_names {
-            let count_prs = util::count_pull_requests(
-                &mut self.graphql,
-                &self.org_name,
-                &repo,
-                &self.start_date,
-                &self.end_date,
-            )
-            .await?;
+        for repo_name in &self.repo_names {
+            let repo = self.make_repo(repo_name);
 
-            let count_issues = count_issue_closures(
-                &mut self.graphql,
-                &self.org_name,
-                &repo,
-                &self.start_date,
-                &self.end_date,
-            )
-            .await?;
+            let count_prs = repo.spawn_count_pulls().await?;
+            let count_issues = repo.spawn_count_issue_closures().await?;
 
             tx.send(vec![
                 self.org_name.clone(),
-                repo.to_owned(),
+                repo_name.to_owned(),
                 count_prs.to_string(),
                 count_issues.opened.to_string(),
                 count_issues.closed.to_string(),
@@ -90,34 +89,64 @@ struct IssueClosuresCount {
     closed: usize,
 }
 
-/// count the number of issues opened and closed in a given time period
-///
-/// # Arguments
-/// - `org_name` — The name of the github organization that owns the specified repository
-/// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the `org_name` Github Organization
-/// - `start_date` — The beginning of the relevant time period to search within
-/// - `end_date` — The end of the relevant time period to search within
-#[throws]
-async fn count_issue_closures(
-    graphql: &mut Graphql,
-    org_name: &str,
-    repo_name: &str,
-    start_date: &Datetime,
-    end_date: &Datetime,
-) -> IssueClosuresCount {
-    let opened = util::count_issues(
-        graphql, org_name, repo_name, start_date, end_date, "created",
-    )
-    .await?;
+#[derive(Clone, Debug)]
+struct Repo {
+    graphql: Graphql,
+    org_name: String,
+    repo_name: String,
+    start_date: Datetime,
+    end_date: Datetime,
+}
 
-    let closed =
-        util::count_issues(graphql, org_name, repo_name, start_date, end_date, "closed").await?;
+impl Repo {
+    #[throws]
+    async fn spawn_count_pulls(&self) -> usize {
+        let mut repo = self.clone();
+        tokio::spawn(async move { repo.count_pulls().await }).await??
+    }
 
-    let result = IssueClosuresCount { opened, closed };
-    debug!(
-        "Retried issue closure info for {}/{}: {:?}",
-        org_name, repo_name, result
-    );
+    #[throws]
+    async fn spawn_count_issue_closures(&self) -> IssueClosuresCount {
+        let mut repo = self.clone();
+        let opened = tokio::spawn(async move { repo.count_issues("created").await }).await??;
 
-    result
+        let mut repo = self.clone();
+        let closed = tokio::spawn(async move { repo.count_issues("closed").await }).await??;
+
+        let result = IssueClosuresCount { opened, closed };
+
+        debug!(
+            "Retried issue closure info for {}/{}: {:?}",
+            self.org_name, self.repo_name, result
+        );
+
+        result
+    }
+
+    #[inline]
+    #[throws]
+    async fn count_pulls(&mut self) -> usize {
+        util::count_pull_requests(
+            &mut self.graphql,
+            &self.org_name,
+            &self.repo_name,
+            &self.start_date,
+            &self.end_date,
+        )
+        .await?
+    }
+
+    #[inline]
+    #[throws]
+    async fn count_issues(&mut self, state: &str) -> usize {
+        util::count_issues(
+            &mut self.graphql,
+            &self.org_name,
+            &self.repo_name,
+            &self.start_date,
+            &self.end_date,
+            state,
+        )
+        .await?
+    }
 }

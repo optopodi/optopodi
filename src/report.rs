@@ -134,10 +134,6 @@ impl Report {
                 .repo_infos(&config)
                 .await
                 .wrap_err("Failed to gather Repo Infos")?,
-            // issue_closures: self
-            //     .issue_closures(&config)
-            //     .await
-            //     .wrap_err("Failed to gather issue closure info")?,
         });
 
         // Finally, we call all of our 'write' functions which produce
