@@ -36,7 +36,6 @@ pub struct ReportData {
     repo_participants: repo_participant::RepoParticipants,
     repo_infos: repo_info::RepoInfos,
     top_crates: Vec<top_crates::TopCrateInfo>,
-    issue_closures: Vec<issue_closure::IssueClosure>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -98,14 +97,10 @@ impl Report {
     /// - generate output data and associated files for each optopodi metric
     #[throws]
     pub async fn run(mut self) {
-        // ---------------------------------------------------------------
         // Load the report configuration from the data directory.
-        // ---------------------------------------------------------------
         let config = Arc::new(self.load_config().await.wrap_err("Failed to load config")?);
 
-        // ---------------------------------------------------------------
         // attempt to create all relevant directories
-        // ---------------------------------------------------------------
         tokio::fs::create_dir_all(self.graphql_dir())
             .await
             .wrap_err("Failed to create GraphQL Directory")?;
@@ -116,7 +111,6 @@ impl Report {
             .await
             .wrap_err("Failed to create Output Directory")?;
 
-        // ---------------------------------------------------------------
         // generate relevant input data
         //
         // the following function calls will...
@@ -127,7 +121,6 @@ impl Report {
         //
         // the result is this in-memory database, of sorts, with all of the data we
         // will later use for our customized metrics
-        // ---------------------------------------------------------------
         let data = Arc::new(ReportData {
             top_crates: self
                 .top_crates(&config)
@@ -141,17 +134,15 @@ impl Report {
                 .repo_infos(&config)
                 .await
                 .wrap_err("Failed to gather Repo Infos")?,
-            issue_closures: self
-                .issue_closures(&config)
-                .await
-                .wrap_err("Failed to gather issue closure info")?,
+            // issue_closures: self
+            //     .issue_closures(&config)
+            //     .await
+            //     .wrap_err("Failed to gather issue closure info")?,
         });
 
-        // ---------------------------------------------------------------
         // Finally, we call all of our 'write' functions which produce
         // output data in `$DATA_DIR/output/` folder.
         // Each function will handle its own logic for consuming and manipulating data
-        // ---------------------------------------------------------------
         tokio::task::spawn_blocking(move || -> eyre::Result<()> {
             self.write_top_crates(&config, &data)
                 .wrap_err("Failed to write Top Crates")?;

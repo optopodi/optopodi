@@ -15,12 +15,31 @@ pub struct RepoInfos {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct RepoInfo {
+    /// row number
     #[serde(rename = "#")]
     pub row: usize,
+    /// name of the GitHub Organization to
+    /// which this Repo belongs
+    #[serde(rename = "Organization")]
+    pub org: String,
+    /// the Repository name
     #[serde(rename = "Repository")]
     pub repo: String,
+    /// number of PRs opened in the relevant time span
     #[serde(rename = "PRs Opened")]
     pub num_prs: u64,
+    /// number of issues opened in the relevant time span
+    #[serde(rename = "Issues Opened")]
+    pub num_opened: u64,
+    /// number of issues closed in the relevant time span
+    #[serde(rename = "Issues Closed")]
+    pub num_closed: u64,
+    /// the starting date of the relevant time span
+    #[serde(rename = "Start Date")]
+    pub start: String,
+    /// the ending date of the relevant time span
+    #[serde(rename = "End Date")]
+    pub end: String,
 }
 
 impl Report {
