@@ -35,7 +35,7 @@ impl ListReposForOrg {
 }
 
 impl ListReposForOrg {
-    fn make_repo(&self, repo_name: &str) -> Repo {
+    fn to_repo(&self, repo_name: &str) -> Repo {
         Repo {
             graphql: self.graphql.clone(),
             org_name: self.org_name.clone(),
@@ -62,9 +62,8 @@ impl Producer for ListReposForOrg {
 
     async fn producer_task(mut self, tx: Sender<Vec<String>>) -> Result<(), eyre::Error> {
         for repo_name in &self.repo_names {
-            let repo = self.make_repo(repo_name);
-
-            let count_prs = repo.spawn_count_pulls().await?;
+            let mut repo = self.to_repo(repo_name);
+            let count_prs = repo.count_pulls().await?;
             let count_issues = repo.spawn_count_issue_closures().await?;
 
             tx.send(vec![
@@ -100,20 +99,18 @@ struct Repo {
 
 impl Repo {
     #[throws]
-    async fn spawn_count_pulls(&self) -> usize {
-        let mut repo = self.clone();
-        tokio::spawn(async move { repo.count_pulls().await }).await??
-    }
-
-    #[throws]
     async fn spawn_count_issue_closures(&self) -> IssueClosuresCount {
         let mut repo = self.clone();
-        let opened = tokio::spawn(async move { repo.count_issues("created").await }).await??;
+        let mut clone = self.clone();
 
-        let mut repo = self.clone();
-        let closed = tokio::spawn(async move { repo.count_issues("closed").await }).await??;
+        let futures = vec![repo.count_issues("created"), clone.count_issues("closed")];
 
-        let result = IssueClosuresCount { opened, closed };
+        let resolved = futures::future::try_join_all(futures).await?;
+
+        let result = IssueClosuresCount {
+            opened: resolved[0],
+            closed: resolved[1],
+        };
 
         debug!(
             "Retried issue closure info for {}/{}: {:?}",
