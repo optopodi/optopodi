@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use fehler::throws;
+use futures::future::try_join_all;
 use log::debug;
 use stable_eyre::eyre::{self, Error};
 use tokio::sync::mpsc::Sender;
@@ -64,7 +65,7 @@ impl Producer for ListReposForOrg {
         for repo_name in &self.repo_names {
             let mut repo = self.to_repo(repo_name);
             let count_prs = repo.count_pulls().await?;
-            let count_issues = repo.spawn_count_issue_closures().await?;
+            let count_issues = repo.count_issue_closures().await?;
 
             tx.send(vec![
                 self.org_name.clone(),
@@ -99,13 +100,12 @@ struct Repo {
 
 impl Repo {
     #[throws]
-    async fn spawn_count_issue_closures(&self) -> IssueClosuresCount {
+    async fn count_issue_closures(&self) -> IssueClosuresCount {
         let mut repo = self.clone();
         let mut clone = self.clone();
 
         let futures = vec![repo.count_issues("created"), clone.count_issues("closed")];
-
-        let resolved = futures::future::try_join_all(futures).await?;
+        let resolved = try_join_all(futures).await?;
 
         let result = IssueClosuresCount {
             opened: resolved[0],
