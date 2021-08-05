@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use fehler::throws;
-use futures::future::try_join_all;
+use futures::future::try_join;
 use log::debug;
 use stable_eyre::eyre::{self, Error};
 use tokio::sync::mpsc::Sender;
@@ -104,13 +104,10 @@ impl Repo {
         let mut repo = self.clone();
         let mut clone = self.clone();
 
-        let futures = vec![repo.count_issues("created"), clone.count_issues("closed")];
-        let resolved = try_join_all(futures).await?;
+        let (opened, closed) =
+            try_join(repo.count_issues("created"), clone.count_issues("closed")).await?;
 
-        let result = IssueClosuresCount {
-            opened: resolved[0],
-            closed: resolved[1],
-        };
+        let result = IssueClosuresCount { opened, closed };
 
         debug!(
             "Retried issue closure info for {}/{}: {:?}",
