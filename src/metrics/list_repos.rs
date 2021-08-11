@@ -1,5 +1,8 @@
 use async_trait::async_trait;
-use stable_eyre::eyre;
+use fehler::throws;
+use futures::future::try_join;
+use log::debug;
+use stable_eyre::eyre::{self, Error};
 use tokio::sync::mpsc::Sender;
 use toml::value::Datetime;
 
@@ -32,26 +35,112 @@ impl ListReposForOrg {
     }
 }
 
+impl ListReposForOrg {
+    fn to_repo(&self, repo_name: &str) -> Repo {
+        Repo {
+            graphql: self.graphql.clone(),
+            org_name: self.org_name.clone(),
+            repo_name: repo_name.to_string(),
+            start_date: self.start_date.clone(),
+            end_date: self.end_date.clone(),
+        }
+    }
+}
+
 #[async_trait]
 impl Producer for ListReposForOrg {
     fn column_names(&self) -> Vec<String> {
-        vec![String::from("Repository Name"), String::from("# of PRs")]
+        vec![
+            String::from("Organization"),
+            String::from("Repository"),
+            String::from("PRs Opened"),
+            String::from("Issues Opened"),
+            String::from("Issues Closed"),
+            String::from("Start Date"),
+            String::from("End Date"),
+        ]
     }
 
     async fn producer_task(mut self, tx: Sender<Vec<String>>) -> Result<(), eyre::Error> {
-        for repo in &self.repo_names {
-            let count_prs = util::count_pull_requests(
-                &mut self.graphql,
-                &self.org_name,
-                &repo,
-                &self.start_date,
-                &self.end_date,
-            )
+        for repo_name in &self.repo_names {
+            let mut repo = self.to_repo(repo_name);
+            let count_prs = repo.count_pulls().await?;
+            let count_issues = repo.count_issue_closures().await?;
+
+            tx.send(vec![
+                self.org_name.clone(),
+                repo_name.to_owned(),
+                count_prs.to_string(),
+                count_issues.opened.to_string(),
+                count_issues.closed.to_string(),
+                self.start_date.to_string(),
+                self.end_date.to_string(),
+            ])
             .await?;
-            tx.send(vec![repo.to_owned(), count_prs.to_string()])
-                .await?;
         }
 
         Ok(())
+    }
+}
+
+#[derive(Default, Debug)]
+struct IssueClosuresCount {
+    opened: usize,
+    closed: usize,
+}
+
+#[derive(Clone, Debug)]
+struct Repo {
+    graphql: Graphql,
+    org_name: String,
+    repo_name: String,
+    start_date: Datetime,
+    end_date: Datetime,
+}
+
+impl Repo {
+    #[throws]
+    async fn count_issue_closures(&self) -> IssueClosuresCount {
+        let mut repo = self.clone();
+        let mut clone = self.clone();
+
+        let (opened, closed) =
+            try_join(repo.count_issues("created"), clone.count_issues("closed")).await?;
+
+        let result = IssueClosuresCount { opened, closed };
+
+        debug!(
+            "Retried issue closure info for {}/{}: {:?}",
+            self.org_name, self.repo_name, result
+        );
+
+        result
+    }
+
+    #[inline]
+    #[throws]
+    async fn count_pulls(&mut self) -> usize {
+        util::count_pull_requests(
+            &mut self.graphql,
+            &self.org_name,
+            &self.repo_name,
+            &self.start_date,
+            &self.end_date,
+        )
+        .await?
+    }
+
+    #[inline]
+    #[throws]
+    async fn count_issues(&mut self, state: &str) -> usize {
+        util::count_issues(
+            &mut self.graphql,
+            &self.org_name,
+            &self.repo_name,
+            &self.start_date,
+            &self.end_date,
+            state,
+        )
+        .await?
     }
 }

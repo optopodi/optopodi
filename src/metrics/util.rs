@@ -1,10 +1,14 @@
 use fehler::throws;
 use graphql_client::GraphQLQuery;
+use log::debug;
 use stable_eyre::eyre::Error;
 use toml::value::Datetime;
 
 use super::Graphql;
 
+/// A struct representation of the GraphQL query found in `gql/organization_repos.graphql`
+///
+/// Used to gather relevant data for each repository within a specific GitHub organization.
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "gql/schema.docs.graphql",
@@ -56,6 +60,11 @@ pub async fn all_repos(graphql: &mut Graphql, org: &str) -> Vec<String> {
     repos
 }
 
+/// A struct representation of the GraphQL query found in `gql/count_issues.graphql`
+///
+/// Used to count total number of issues that match the given `query_string`
+///
+/// Note: Pull Requests and Issues both fall under this umbrella
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "gql/schema.docs.graphql",
@@ -64,12 +73,34 @@ pub async fn all_repos(graphql: &mut Graphql, org: &str) -> Vec<String> {
 )]
 pub(crate) struct CountIssues;
 
+impl CountIssues {
+    /// Makes a query to the `gql/count_issues.graphql` query given the relevant `query_string` variable.
+    ///
+    /// Returns the total number of issues that match the given `query_string`.
+    ///
+    /// # Arguments
+    /// - `graphql` — A `graphql_client::GraphQLQuery` instance to make a GQL query
+    /// - `query_string` — The relevant `query_string` to pass into the GQL query
+    #[throws]
+    pub async fn query(graphql: &mut Graphql, query_string: String) -> usize {
+        let response = graphql
+            .query(Self)
+            .execute(count_issues::Variables { query_string })
+            .await?;
+        let response_data = response.data.expect("missing response data");
+        let count = response_data.search.issue_count;
+        count as usize
+    }
+}
+
 /// count the number of pull requests created in the given time period for the given repository within the given GitHub organization
 ///
 /// # Arguments
+/// - `graphql` — A `graphql_client::GraphQLQuery` instance to make a GQL query
 /// - `org_name` — The name of the github organization that owns the specified repository
-/// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the `org_name` Github Organization
-/// - `time_period` — The relevant time period to search within
+/// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the `org_name` GitHub Organization
+/// - `start_date` — The beginning of the relevant time period to search within
+/// - `end_date` — The end of the relevant time period to search within
 #[throws]
 pub(super) async fn count_pull_requests(
     graphql: &mut Graphql,
@@ -83,11 +114,37 @@ pub(super) async fn count_pull_requests(
         org_name, repo_name, start_date, end_date
     );
 
-    let response = graphql
-        .query(CountIssues)
-        .execute(count_issues::Variables { query_string })
-        .await?;
-    let response_data = response.data.expect("missing response data");
-    let count = response_data.search.issue_count;
-    count as usize
+    CountIssues::query(graphql, query_string).await?
+}
+
+/// count the number of issues with the given state in a given time period
+///
+/// # Arguments
+/// - `graphql` — A `graphql_client::GraphQLQuery` instance to make a GQL query
+/// - `org_name` — The name of the github organization that owns the specified repository
+/// - `repo_name` — The name of the repository to count pull requests for. **Note:** repository should exist within the `org_name` GitHub Organization
+/// - `start_date` — The beginning of the relevant time period to search within
+/// - `end_date` — The end of the relevant time period to search within
+/// - `state` — The state of the issues to count. (i.e., `"created"` or `"closed"`)
+#[throws]
+pub(super) async fn count_issues(
+    graphql: &mut Graphql,
+    org_name: &str,
+    repo_name: &str,
+    start_date: &Datetime,
+    end_date: &Datetime,
+    state: &str,
+) -> usize {
+    debug!("Fetching issue closure info for {}/{}", org_name, repo_name);
+
+    let query_string = format!(
+        r#"repo:{org_name}/{repo_name} is:issue {state}:{start_date}..{end_date}"#,
+        org_name = org_name,
+        repo_name = repo_name,
+        start_date = start_date,
+        end_date = end_date,
+        state = state,
+    );
+
+    CountIssues::query(graphql, query_string).await?
 }

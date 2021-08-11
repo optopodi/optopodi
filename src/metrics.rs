@@ -3,7 +3,6 @@ use stable_eyre::eyre;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
 mod gql;
-mod issue_closures;
 mod list_repos;
 mod print;
 mod repo_participants;
@@ -29,7 +28,6 @@ pub trait Consumer {
 }
 
 pub use gql::Graphql;
-pub use issue_closures::IssueClosures;
 pub use list_repos::ListReposForOrg;
 pub use print::Print;
 pub use repo_participants::RepoParticipants;
