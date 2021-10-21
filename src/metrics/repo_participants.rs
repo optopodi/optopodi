@@ -149,7 +149,7 @@ async fn pr_participants(
             // Extract PR author
             let mut author = None;
             if let Some(a) = pr.author {
-                if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestAuthorOn::User(u) = a.on {
+                if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestAuthor::User(u) = a {
                     author = Some(u.login);
                 }
             }
@@ -197,19 +197,17 @@ async fn pr_participants(
                 .inspect(|_| reviews_found += 1)
                 .flatten()
                 .flat_map(|n| n.author)
-                .flat_map(|a| {
-                    match a.on {
-                    pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestReviewsNodesAuthorOn::User(
+                .flat_map(|a| match a {
+                    pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestReviewsNodesAuthor::User(
                         u,
                     ) => Some(u.login),
                     _ => None,
-                }
                 })
                 .collect();
             for reviewer in reviewers {
                 // you don't count as a reviewer if you review your own PR
                 if !is_author(&reviewer) {
-                    counts.entry(reviewer).or_default().reviewed += 1;
+                    counts.entry(reviewer.to_string()).or_default().reviewed += 1;
                 }
             }
 
@@ -224,8 +222,7 @@ async fn pr_participants(
 
             // Count the number of PRs which a person has merged.
             if let Some(a) = pr.merged_by {
-                if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestMergedByOn::User(u) = a.on
-                {
+                if let pap::PrsAndParticipantsSearchEdgesNodeOnPullRequestMergedBy::User(u) = a {
                     counts.entry(u.login).or_default().resolved += 1;
                 }
             }
