@@ -1,4 +1,4 @@
-use clap::{AppSettings, Clap};
+use clap::{AppSettings, Parser};
 use fehler::throws;
 use stable_eyre::eyre::{Error, WrapErr};
 use std::path::PathBuf;
@@ -10,7 +10,7 @@ mod util;
 
 use crate::report::Report;
 
-#[derive(Clap, Debug, PartialEq)]
+#[derive(Parser, Debug, PartialEq)]
 #[clap(setting = AppSettings::ColoredHelp)]
 #[clap(name = "optopodi")]
 struct OctoCli {
@@ -23,7 +23,7 @@ struct OctoCli {
     cmd: Cmd,
 }
 
-#[derive(Clap, Debug, PartialEq)]
+#[derive(Parser, Debug, PartialEq)]
 enum Cmd {
     Report { directory: String },
 }
